@@ -5,46 +5,65 @@ This application uses the CascadeLLM coursemaker module to generate structured e
 ## Features
 
 - Generate structured courses with chapters, explanations, and summaries
+- Two chapter generation modes: adaptive (based on content complexity) or fixed count
 - Configure API keys and model settings via YAML configuration
 - Output course content as Markdown files
 - Customize model parameters like temperature
 
 ## Setup
 
-1. Install the required dependencies:
+1.  **Install Dependencies**: This project uses `uv` for package management. To install all required dependencies, run the following command from the project's root directory:
 
-```bash
-pip install pyyaml
-```
+    ```bash
+    uv sync
+    ```
 
-2. Configure your API key in `config.yaml`:
+2.  **Configure API Key**: Copy the `app/config.yaml_example` file to `app/config.yaml` and replace the placeholder with your actual Google Gemini API key.
 
-```yaml
-api:
-  google_api_key: "your_gemini_api_key_here"  # Replace with your actual API key
-```
+    ```yaml
+    # app/config.yaml
+    api:
+      google_api_key: "your_gemini_api_key_here"
+    ```
 
 ## Usage
 
+To run the course generator, use the `uv run` command from the project root, followed by the path to the script and any desired arguments.
+
 ```bash
-python generate_course.py sample_input.txt --title "AI Fundamentals"
+uv run python app/generate_course.py app/sample_input.txt --title "AI Fundamentals"
 ```
 
 ### Command Line Arguments
 
 - `input`: Path to the input content file (required)
-- `--config`: Path to configuration file (default: config.yaml)
+- `--config`: Path to configuration file (default: `app/config.yaml`)
 - `--title`: Title of the course (default: "Generated Course")
+- `--verbose`, `-v`: Enable verbose output
+- `--max-chapters`: Maximum number of chapters to generate (default: 10)
+- `--fixed-chapters`: If set, generates exactly `--max-chapters` chapters instead of adapting based on content complexity.
 
-### Example
+### Chapter Generation Modes
+
+The application supports two modes for chapter generation:
+
+1.  **Adaptive Mode (Default)**: The AI analyzes the content and determines the optimal number of chapters (between 1 and `--max-chapters`) based on its complexity.
+
+2.  **Fixed Mode**: The AI generates exactly the number of chapters specified by `--max-chapters`.
+
+### Examples
 
 ```bash
-python generate_course.py sample_input.txt --title "Introduction to AI" --config custom_config.yaml
+# Adaptive mode (default) - generates between 1-10 chapters based on content complexity
+uv run python app/generate_course.py app/sample_input.txt --title "Introduction to AI" --max-chapters 10
+
+# Fixed mode - generates exactly 5 chapters
+uv run python app/generate_course.py app/sample_input.txt --title "Introduction to AI" --max-chapters 5 --fixed-chapters
 ```
 
 ## Output
 
-The generated course will be saved in the `output` directory (configurable in `config.yaml`) with the following structure:
+The generated course will be saved in the `app/output` directory (configurable in `config.yaml`) with the following structure:
 
 - `{course_title}_summary.md`: Overall course summary
 - `{course_title}_chapter_01.md`, `{course_title}_chapter_02.md`, etc.: Individual chapter files
@@ -57,7 +76,7 @@ Each chapter file includes:
 
 ## Configuration
 
-You can customize the behavior by editing `config.yaml`:
+You can customize the behavior by editing `app/config.yaml`:
 
 ```yaml
 # Gemini API Configuration

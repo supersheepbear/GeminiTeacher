@@ -126,6 +126,8 @@ def main():
     parser.add_argument("--title", default="Generated Course", help="Title of the course")
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
     parser.add_argument("--max-chapters", type=int, default=10, help="Maximum number of chapters to generate")
+    parser.add_argument("--fixed-chapters", action="store_true", 
+                      help="If set, generates exactly --max-chapters chapters instead of adapting based on content complexity")
     args = parser.parse_args()
     
     # Get absolute path to config file (relative to script location)
@@ -166,12 +168,17 @@ def main():
         if args.verbose:
             print(f"Generating course: {args.title}")
             print(f"Maximum chapters: {args.max_chapters}")
+            if args.fixed_chapters:
+                print(f"Mode: Fixed chapter count (exactly {args.max_chapters} chapters)")
+            else:
+                print(f"Mode: Adaptive chapter count (1-{args.max_chapters} chapters based on content)")
             
         course = create_course(
             content, 
             llm=llm, 
             verbose=args.verbose,
-            max_chapters=args.max_chapters
+            max_chapters=args.max_chapters,
+            fixed_chapter_count=args.fixed_chapters
         )
         
         # Save the course

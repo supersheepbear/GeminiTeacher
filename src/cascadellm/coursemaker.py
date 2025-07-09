@@ -49,7 +49,7 @@ class Course(BaseModel):
     summary: str = ""
 
 
-def create_toc_prompt(max_chapters: int = 10) -> ChatPromptTemplate:
+def create_toc_prompt(max_chapters: int = 10, fixed_chapter_count: bool = False) -> ChatPromptTemplate:
     """
     Create the prompt template for TOC generation.
     
@@ -57,18 +57,27 @@ def create_toc_prompt(max_chapters: int = 10) -> ChatPromptTemplate:
     ----
     max_chapters : int, optional
         Maximum number of chapters to generate. Default is 10.
+    fixed_chapter_count : bool, optional
+        If True, generate exactly max_chapters. If False, generate between 1 and max_chapters
+        based on content complexity. Default is False.
     
     Returns
     ----
     ChatPromptTemplate
         A prompt template for generating a table of contents.
     """
+    
+    # Choose the instruction based on the mode
+    if fixed_chapter_count:
+        chapter_count_instruction = f"Create a logical structure with exactly {max_chapters} chapter titles in simplified Chinese."
+    else:
+        chapter_count_instruction = f"Create a logical structure with 1-{max_chapters} chapter titles in simplified Chinese.\nDetermine the number of chapters based on the content depth."
+    
     return ChatPromptTemplate.from_template(
-        """You are a post-doctoral professional creating a structured learning curriculum.
+        f"""You are a post-doctoral professional creating a structured learning curriculum.
         
         Below is raw content that needs to be organized into a meaningful table of contents.
-        Create a logical structure with 1-{max_chapters} chapter titles in simplified Chinese.
-        Determine the number of chapters based on the content depth.
+        {chapter_count_instruction}
         The key is to make the content taught as detailed as possible.
         Format your response as a numbered list, with each chapter on a new line.
         
@@ -76,7 +85,7 @@ def create_toc_prompt(max_chapters: int = 10) -> ChatPromptTemplate:
         ONLY include the numbered list of chapter titles.
         
         Raw content:
-        {content}
+        {{content}}
         """
     )
 
@@ -243,7 +252,7 @@ def get_default_llm(temperature: float = 0.0) -> BaseLanguageModel:
         raise e
 
 
-def generate_toc(content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0, max_chapters: int = 10) -> List[str]:
+def generate_toc(content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0, max_chapters: int = 10, fixed_chapter_count: bool = False) -> List[str]:
     """
     Generate a table of contents from raw content.
     
@@ -262,6 +271,9 @@ def generate_toc(content: str, llm: Optional[BaseLanguageModel] = None, temperat
         Default is 0.0 (deterministic output).
     max_chapters : int, optional
         Maximum number of chapters to generate. Default is 10.
+    fixed_chapter_count : bool, optional
+        If True, generate exactly max_chapters. If False, generate between 1 and max_chapters
+        based on content complexity. Default is False.
     
     Returns
     ----
@@ -277,9 +289,13 @@ def generate_toc(content: str, llm: Optional[BaseLanguageModel] = None, temperat
     >>> toc = generate_toc("Content about history...", max_chapters=20)
     >>> print(len(toc))
     15  # The actual number may vary based on content
+    
+    >>> toc = generate_toc("Content about a simple topic...", max_chapters=5, fixed_chapter_count=True)
+    >>> print(len(toc))
+    5  # Will always generate exactly 5 chapters
     """
     # Create the prompt template
-    prompt = create_toc_prompt(max_chapters=max_chapters)
+    prompt = create_toc_prompt(max_chapters=max_chapters, fixed_chapter_count=fixed_chapter_count)
     
     # If no LLM is provided, configure Gemini
     if llm is None:
@@ -437,7 +453,7 @@ def generate_summary(content: str, chapters: List[ChapterContent], llm: Optional
     return result.get("text", "")
 
 
-def create_course(content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0, verbose: bool = False, max_chapters: int = 10) -> Course:
+def create_course(content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0, verbose: bool = False, max_chapters: int = 10, fixed_chapter_count: bool = False) -> Course:
     """
     Create a complete structured course from raw content.
     
@@ -461,6 +477,9 @@ def create_course(content: str, llm: Optional[BaseLanguageModel] = None, tempera
         Default is False.
     max_chapters : int, optional
         Maximum number of chapters to generate. Default is 10.
+    fixed_chapter_count : bool, optional
+        If True, generate exactly max_chapters. If False, generate between 1 and max_chapters
+        based on content complexity. Default is False.
     
     Returns
     ----
@@ -474,6 +493,10 @@ def create_course(content: str, llm: Optional[BaseLanguageModel] = None, tempera
     
     >>> course = create_course("Extended content...", max_chapters=20)
     >>> print(f"Generated {len(course.chapters)} chapters")
+    
+    >>> course = create_course("Simple content...", max_chapters=5, fixed_chapter_count=True)
+    >>> print(f"Generated {len(course.chapters)} chapters")
+    >>> # Will always print "Generated 5 chapters"
     """
     # Initialize the course with the original content
     course = Course(content=content)
@@ -487,7 +510,17 @@ def create_course(content: str, llm: Optional[BaseLanguageModel] = None, tempera
     # Step 1: Generate the table of contents
     if verbose:
         print(f"Generating table of contents (max {max_chapters} chapters)...")
-    chapter_titles = generate_toc(content, llm=llm, temperature=temperature, max_chapters=max_chapters)
+        if fixed_chapter_count:
+            print(f"Using fixed chapter count mode: exactly {max_chapters} chapters")
+    
+    chapter_titles = generate_toc(
+        content, 
+        llm=llm, 
+        temperature=temperature, 
+        max_chapters=max_chapters,
+        fixed_chapter_count=fixed_chapter_count
+    )
+    
     if verbose:
         print(f"Generated {len(chapter_titles)} chapter titles")
     

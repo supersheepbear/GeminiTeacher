@@ -128,3 +128,60 @@ The implemented code fully meets all the requirements and follows all the establ
 5. **Pydantic Models**: Pydantic provides an excellent way to define structured data models with validation, making it perfect for representing LLM-generated structured content.
 6. **Orchestration Pattern**: When building multi-step LLM pipelines, it's valuable to have a clear orchestration function that manages the flow of data between steps.
 7. **Prompt Design**: Carefully designed prompts with clear instructions and structure lead to more predictable and useful LLM outputs. 
+
+# Feature: Two Modes for Chapter Generation
+
+### Background and Motivation
+
+The user wants to add two modes to the app for chapter generation:
+
+1. **Mode 1 (Adaptive)**: Given a maximum chapter number, the AI decides how many chapters to generate based on content complexity. This is the current default behavior.
+
+2. **Mode 2 (Fixed)**: Given a maximum chapter number, the AI generates exactly that many chapters regardless of content complexity.
+
+### Key Changes Required
+
+1. **Modify TOC Generation**: Update the `generate_toc` function and its prompt template to support both modes.
+2. **Modify the CLI Interface**: Update `app/generate_course.py` to include a mode flag for selecting between adaptive and fixed chapter count.
+3. **Update Documentation**: Ensure that the new feature is properly documented.
+
+### High-level Task Breakdown
+
+1. **Add Mode Parameter**:
+   - Add a `fixed_chapter_count` boolean parameter to `create_toc_prompt` and `generate_toc`
+   - Update the `create_course` function to accept and pass this parameter
+
+2. **Update TOC Prompt**:
+   - Modify the TOC prompt template to have conditional instructions based on the mode
+   - For Mode 1 (Adaptive): Keep existing behavior (1-N chapters based on content)
+   - For Mode 2 (Fixed): Require exactly N chapters
+
+3. **Update CLI Interface**:
+   - Add a `--fixed-chapters` flag to `app/generate_course.py`
+   - Add appropriate help text explaining the two modes
+   - Pass the selected mode to the `create_course` function
+
+4. **Testing**:
+   - Add tests for both modes of chapter generation
+   - Ensure backward compatibility
+
+### Project Status Board
+
+- [x] **Task 1: Add Mode Parameter**
+  - [x] Update `create_toc_prompt` to accept and use `fixed_chapter_count` parameter
+  - [x] Update `generate_toc` to pass the parameter
+  - [x] Update `create_course` to accept the parameter
+
+- [x] **Task 2: Update TOC Prompt**
+  - [x] Modify prompt template to include conditional logic based on mode
+  - [x] Test prompt generation with different modes
+
+- [x] **Task 3: Update CLI Interface**
+  - [x] Add `--fixed-chapters` flag to argument parser
+  - [x] Update help text to explain the two modes
+  - [x] Pass mode to `create_course` function
+
+- [x] **Task 4: Add Tests**
+  - [x] Add tests for Mode 1 (Adaptive)
+  - [x] Add tests for Mode 2 (Fixed)
+  - [x] Verify backward compatibility 
