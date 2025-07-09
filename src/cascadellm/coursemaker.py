@@ -313,8 +313,14 @@ def generate_toc(content: str, llm: Optional[BaseLanguageModel] = None, temperat
         "max_chapters": max_chapters
     })
     
-    # Parse the result to extract the chapter titles
+    # Get the raw text from the result
     text = result.get("text", "")
+    
+    # Log the raw LLM response for debugging
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger("coursemaker")
+    logger.info(f"Raw LLM response for TOC generation:\n{text}")
     
     # Split the text by newlines and extract chapter titles
     lines = text.strip().split("\n")

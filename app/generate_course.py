@@ -10,6 +10,8 @@ import argparse
 import os
 import sys
 import yaml
+import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -129,6 +131,7 @@ def main():
     parser.add_argument("--max-chapters", type=int, default=10, help="Maximum number of chapters to generate")
     parser.add_argument("--fixed-chapters", action="store_true", 
                       help="If set, generates exactly --max-chapters chapters instead of adapting based on content complexity")
+    parser.add_argument("--log-file", help="Path to log file (default: output/generation_log.txt)")
     args = parser.parse_args()
     
     # Get absolute path to config file (relative to script location)
@@ -138,10 +141,32 @@ def main():
     # Load configuration
     config = load_config(config_path)
     
+    # Get output directory
+    output_dir = config.get('course', {}).get('output_dir', 'output')
+    output_dir = os.path.join(script_dir, output_dir)
+    
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Set up logging
+    log_file = args.log_file if args.log_file else os.path.join(output_dir, f"generation_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
+    logging.basicConfig(
+        level=logging.INFO if args.verbose else logging.WARNING,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler()
+        ]
+    )
+    logger = logging.getLogger("generate_course")
+    logger.info(f"Starting course generation with config: {config_path}")
+    logger.info(f"Input file: {args.input}")
+    logger.info(f"Mode: {'Fixed' if args.fixed_chapters else 'Adaptive'} chapter count (max: {args.max_chapters})")
+    
     # Get API key from configuration
     api_key = config.get('api', {}).get('google_api_key')
     if not api_key:
-        print("Error: Google API key not found in configuration")
+        logger.error("Google API key not found in configuration")
         sys.exit(1)
     
     # Set up environment variables (for backward compatibility)
@@ -153,14 +178,12 @@ def main():
 
     # Convert non-text files to Markdown before processing
     if input_path.suffix.lower() not in text_extensions:
-        if args.verbose:
-            print(f"Input file is not plain text. Converting {args.input} to Markdown...")
+        logger.info(f"Input file is not plain text. Converting {args.input} to Markdown...")
         try:
-            content = convert_to_markdown(input_path)
-            if args.verbose:
-                print("Conversion successful.")
+            content = convert_to_markdown(input_path, output_dir=output_dir)
+            logger.info(f"Conversion successful. Markdown saved to {output_dir}/{input_path.stem}.md")
         except Exception as e:
-            print(f"Error converting file to Markdown: {e}")
+            logger.error(f"Error converting file to Markdown: {e}", exc_info=True)
             sys.exit(1)
     else:
         # Read input content directly for text files
@@ -170,8 +193,7 @@ def main():
     model_name = config.get('model', {}).get('name', 'gemini-1.5-pro')
     temperature = config.get('model', {}).get('temperature', 0.0)
     
-    if args.verbose:
-        print(f"Configuring LLM with model: {model_name} (temperature: {temperature})")
+    logger.info(f"Configuring LLM with model: {model_name} (temperature: {temperature})")
     
     try:
         # Pass the API key directly to avoid authentication issues
@@ -182,13 +204,11 @@ def main():
         )
         
         # Generate the course with verbose logging
-        if args.verbose:
-            print(f"Generating course: {args.title}")
-            print(f"Maximum chapters: {args.max_chapters}")
-            if args.fixed_chapters:
-                print(f"Mode: Fixed chapter count (exactly {args.max_chapters} chapters)")
-            else:
-                print(f"Mode: Adaptive chapter count (1-{args.max_chapters} chapters based on content)")
+        logger.info(f"Generating course: {args.title}")
+        if args.fixed_chapters:
+            logger.info(f"Mode: Fixed chapter count (exactly {args.max_chapters} chapters)")
+        else:
+            logger.info(f"Mode: Adaptive chapter count (1-{args.max_chapters} chapters based on content)")
             
         course = create_course(
             content, 
@@ -199,22 +219,16 @@ def main():
         )
         
         # Save the course
-        output_dir = config.get('course', {}).get('output_dir', 'output')
-        output_dir = os.path.join(script_dir, output_dir)
-        
-        if args.verbose:
-            print(f"Saving course with {len(course.chapters)} chapters to {output_dir}")
+        logger.info(f"Saving course with {len(course.chapters)} chapters to {output_dir}")
             
         save_course_to_files(args.title, course, output_dir)
         
         print(f"Course generated with {len(course.chapters)} chapters")
         print(f"Output saved to: {output_dir}")
+        print(f"Log file: {log_file}")
         
     except Exception as e:
-        print(f"Error generating course: {e}")
-        if args.verbose:
-            import traceback
-            traceback.print_exc()
+        logger.error(f"Error generating course: {e}", exc_info=True)
         sys.exit(1)
 
 
