@@ -1,1 +1,1 @@
-uv run generate_course.py sample_input.txt --title "knowledge" --verbose
+uv run generate_course.py sample_input.txt --title "knowledge" --verbose --max-chapters 15

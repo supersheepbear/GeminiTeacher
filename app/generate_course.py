@@ -125,6 +125,7 @@ def main():
     parser.add_argument("--config", default="config.yaml", help="Path to configuration file")
     parser.add_argument("--title", default="Generated Course", help="Title of the course")
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
+    parser.add_argument("--max-chapters", type=int, default=10, help="Maximum number of chapters to generate")
     args = parser.parse_args()
     
     # Get absolute path to config file (relative to script location)
@@ -164,8 +165,14 @@ def main():
         # Generate the course with verbose logging
         if args.verbose:
             print(f"Generating course: {args.title}")
+            print(f"Maximum chapters: {args.max_chapters}")
             
-        course = create_course(content, llm=llm, verbose=args.verbose)
+        course = create_course(
+            content, 
+            llm=llm, 
+            verbose=args.verbose,
+            max_chapters=args.max_chapters
+        )
         
         # Save the course
         output_dir = config.get('course', {}).get('output_dir', 'output')

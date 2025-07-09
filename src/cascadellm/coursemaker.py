@@ -49,9 +49,14 @@ class Course(BaseModel):
     summary: str = ""
 
 
-def create_toc_prompt() -> ChatPromptTemplate:
+def create_toc_prompt(max_chapters: int = 10) -> ChatPromptTemplate:
     """
     Create the prompt template for TOC generation.
+    
+    Parameters
+    ----
+    max_chapters : int, optional
+        Maximum number of chapters to generate. Default is 10.
     
     Returns
     ----
@@ -62,7 +67,7 @@ def create_toc_prompt() -> ChatPromptTemplate:
         """You are a professional educator creating a structured learning curriculum.
         
         Below is raw content that needs to be organized into a meaningful table of contents.
-        Create a logical structure with 1-10 chapter titles in simplified Chinese.
+        Create a logical structure with 1-{max_chapters} chapter titles in simplified Chinese.
         Format your response as a numbered list, with each chapter on a new line.
         
         DO NOT include any explanations, introductions, or additional text.
@@ -231,7 +236,7 @@ def get_default_llm(temperature: float = 0.0) -> BaseLanguageModel:
         raise e
 
 
-def generate_toc(content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0) -> List[str]:
+def generate_toc(content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0, max_chapters: int = 10) -> List[str]:
     """
     Generate a table of contents from raw content.
     
@@ -248,6 +253,8 @@ def generate_toc(content: str, llm: Optional[BaseLanguageModel] = None, temperat
     temperature : float, optional
         The temperature setting for the LLM, affecting randomness in output.
         Default is 0.0 (deterministic output).
+    max_chapters : int, optional
+        Maximum number of chapters to generate. Default is 10.
     
     Returns
     ----
@@ -258,10 +265,14 @@ def generate_toc(content: str, llm: Optional[BaseLanguageModel] = None, temperat
     -----
     >>> toc = generate_toc("This is a text about machine learning...")
     >>> print(toc)
-    ['Introduction to Machine Learning', 'Supervised Learning Methods', ...]
+    ['Introduction to Machine Learning', 'Types of Machine Learning', ...]
+    
+    >>> toc = generate_toc("Content about history...", max_chapters=20)
+    >>> print(len(toc))
+    15  # The actual number may vary based on content
     """
     # Create the prompt template
-    prompt = create_toc_prompt()
+    prompt = create_toc_prompt(max_chapters=max_chapters)
     
     # If no LLM is provided, configure Gemini
     if llm is None:
@@ -274,29 +285,29 @@ def generate_toc(content: str, llm: Optional[BaseLanguageModel] = None, temperat
     )
     
     # Invoke the chain with the content
-    result = chain.invoke({"content": content})
+    result = chain.invoke({
+        "content": content,
+        "max_chapters": max_chapters
+    })
     
-    # Extract and clean up the chapter titles
-    chapters = []
-    if result.get("text"):
-        # Split by newline and process each line
-        for line in result["text"].strip().split("\n"):
-            # Process each line to clean it up
-            clean_line = line.strip()
-            
-            # Skip empty lines
-            if not clean_line:
-                continue
-            
-            # Extract just the chapter title by removing the numbering
-            # This pattern matches common numbering patterns at the beginning of a line
-            parts = clean_line.split(". ", 1)
-            if len(parts) > 1 and parts[0].isdigit():
-                clean_line = parts[1].strip()
-            
-            chapters.append(clean_line)
+    # Parse the result to extract the chapter titles
+    text = result.get("text", "")
     
-    return chapters
+    # Split the text by newlines and extract chapter titles
+    lines = text.strip().split("\n")
+    chapter_titles = []
+    
+    for line in lines:
+        # Remove leading numbers, dots, and whitespace
+        line = line.strip()
+        # Match patterns like "1. ", "1) ", "Chapter 1: ", etc.
+        import re
+        line = re.sub(r"^(\d+[\.\):]|Chapter\s+\d+:?)\s*", "", line)
+        
+        if line:  # Skip empty lines
+            chapter_titles.append(line)
+    
+    return chapter_titles
 
 
 def generate_chapter(chapter_title: str, content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0) -> ChapterContent:
@@ -419,7 +430,7 @@ def generate_summary(content: str, chapters: List[ChapterContent], llm: Optional
     return result.get("text", "")
 
 
-def create_course(content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0, verbose: bool = False) -> Course:
+def create_course(content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0, verbose: bool = False, max_chapters: int = 10) -> Course:
     """
     Create a complete structured course from raw content.
     
@@ -441,6 +452,8 @@ def create_course(content: str, llm: Optional[BaseLanguageModel] = None, tempera
     verbose : bool, optional
         Whether to print progress messages during course generation.
         Default is False.
+    max_chapters : int, optional
+        Maximum number of chapters to generate. Default is 10.
     
     Returns
     ----
@@ -450,6 +463,9 @@ def create_course(content: str, llm: Optional[BaseLanguageModel] = None, tempera
     Examples
     -----
     >>> course = create_course("Raw content about a topic...")
+    >>> print(f"Generated {len(course.chapters)} chapters")
+    
+    >>> course = create_course("Extended content...", max_chapters=20)
     >>> print(f"Generated {len(course.chapters)} chapters")
     """
     # Initialize the course with the original content
@@ -463,8 +479,8 @@ def create_course(content: str, llm: Optional[BaseLanguageModel] = None, tempera
     
     # Step 1: Generate the table of contents
     if verbose:
-        print("Generating table of contents...")
-    chapter_titles = generate_toc(content, llm=llm, temperature=temperature)
+        print(f"Generating table of contents (max {max_chapters} chapters)...")
+    chapter_titles = generate_toc(content, llm=llm, temperature=temperature, max_chapters=max_chapters)
     if verbose:
         print(f"Generated {len(chapter_titles)} chapter titles")
     
