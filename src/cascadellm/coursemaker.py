@@ -64,10 +64,12 @@ def create_toc_prompt(max_chapters: int = 10) -> ChatPromptTemplate:
         A prompt template for generating a table of contents.
     """
     return ChatPromptTemplate.from_template(
-        """You are a professional educator creating a structured learning curriculum.
+        """You are a post-doctoral professional creating a structured learning curriculum.
         
         Below is raw content that needs to be organized into a meaningful table of contents.
         Create a logical structure with 1-{max_chapters} chapter titles in simplified Chinese.
+        Determine the number of chapters based on the content depth.
+        The key is to make the content taught as detailed as possible.
         Format your response as a numbered list, with each chapter on a new line.
         
         DO NOT include any explanations, introductions, or additional text.
@@ -97,7 +99,7 @@ def create_chapter_prompt_template() -> ChatPromptTemplate:
     >>> prompt.format(chapter_title="Introduction to AI", content="...")
     """
     return ChatPromptTemplate.from_template(
-        """你是一位专业教育工作者，正在创建一个结构化的学习课程。
+        """你是一位博士后级别专业教育工作者， 精通所有学科，正在创建一个结构化的学习课程。
         
         请基于以下内容，为章节《{chapter_title}》创建详细的讲解。
         你的回复必须使用以下结构：
@@ -108,12 +110,15 @@ def create_chapter_prompt_template() -> ChatPromptTemplate:
         # 系统性讲解
         [这是最重要的部分。请尽量非常详细地解释所有知识点， 需要全面覆盖所有的原内容，原内容的举例也尽量保留。越详细越好， 不用节约token。
          你可以补充原文缺失的背景信息或重新组织结构，目标是让学习者仅凭你的讲解就能完全掌握，无需阅读原文。
-         在讲解中，首次提到不超过10个核心术语时，请用括号附上英文翻译。例如：人工智能 (Artificial Intelligence)。]
+         你需要以学习者为中心：关注初学者的认知起点，逐步引导，避免假设先验知识。结合实际案例或生活化例子，帮助理解抽象概念。
+         在讲解中，首次提到不超过10个核心术语时，请用括号附上英文翻译。例如：人工智能 (Artificial Intelligence)。
+         请你不要使用太多的子标题， 每一章都保持简洁的结构。 内容方面不需要简洁， 但是结构方面需要简洁。
+         你的回复要以教科书风格和实践为标准。]
         
         # 拓展思考
         [提供额外的思考角度、应用建议或相关领域的连接， 保持简洁， 2-3个即可。]
         
-        请确保你的解释针对初学者，使用通俗易懂的语言，并保持逻辑清晰。
+        请确保你的解释针对初学者，使用通俗易懂的语言，并保持逻辑清晰。请你遵循最佳教学方法。
         
         原始内容:
         {content}
@@ -139,7 +144,7 @@ def create_summary_prompt_template() -> ChatPromptTemplate:
     >>> prompt.format(content="...", chapters_summary="...")
     """
     return ChatPromptTemplate.from_template(
-        """你是一位专业教育工作者，正在为一门课程创建总结。
+        """你是一位博士后级别专业教育工作者，正在为一门课程创建总结。
         
         请基于原始内容和各章节的摘要，创建一个全面的课程总结。
         总结应该概括课程的主要内容、核心概念和学习价值。
