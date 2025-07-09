@@ -25,19 +25,19 @@ This package requires the following dependencies:
 - langchain >= 0.1.0
 - langchain-core >= 0.1.0
 - pydantic >= 2.0.0
+- langchain-google-genai
 
-For using Google's Gemini models:
+## Setting Up Google Gemini API
+
+This module uses Google's Gemini API for all LLM operations:
+
+1. Install the required package:
+
 ```bash
 pip install langchain-google-genai
 ```
 
-## Setting Up LLM Access
-
-This module is designed to work with any LangChain compatible LLM. The implementation now includes built-in support for Google's Gemini models.
-
-### Using Google's Gemini API
-
-1. Set up your Gemini API key as an environment variable:
+2. Set up your Gemini API key as an environment variable:
 
 ```bash
 # On Linux/macOS
@@ -48,38 +48,6 @@ $env:GOOGLE_API_KEY = "your_gemini_api_key_here"
 
 # On Windows Command Prompt
 set GOOGLE_API_KEY=your_gemini_api_key_here
-```
-
-2. Use the built-in helper function to configure Gemini:
-
-```python
-from cascadellm.coursemaker import configure_gemini_llm, create_course
-
-# Create a configured Gemini model
-llm = configure_gemini_llm(temperature=0.2)  # Optional: provide custom API key with api_key parameter
-
-# Generate a course using the Gemini model
-with open("your_content.txt", "r") as f:
-    raw_content = f.read()
-
-course = create_course(raw_content, llm=llm)
-```
-
-### Using Other LLM Providers
-
-You can use any LangChain compatible LLM by creating an instance and passing it to the functions:
-
-```python
-from langchain_openai import ChatOpenAI
-from cascadellm.coursemaker import create_course
-
-# Example with OpenAI
-llm = ChatOpenAI(
-    temperature=0.0,
-    model_name="gpt-4-turbo"
-)
-
-course = create_course(raw_content, llm=llm)
 ```
 
 ## Usage
@@ -95,7 +63,7 @@ from cascadellm.coursemaker import create_course, configure_gemini_llm
 with open("your_content.txt", "r") as f:
     raw_content = f.read()
 
-# Configure the LLM (optional - if not provided, needs to be mocked in tests)
+# Configure the Gemini API
 llm = configure_gemini_llm()
 
 # Generate a structured course
@@ -130,7 +98,7 @@ You can also use the individual components of the pipeline:
 ```python
 from cascadellm.coursemaker import generate_toc, generate_chapter, generate_summary, configure_gemini_llm
 
-# Configure the LLM
+# Configure the Gemini API
 llm = configure_gemini_llm()
 
 # Generate just the table of contents
@@ -146,6 +114,21 @@ print(chapter.summary)
 chapters = [chapter]  # You would typically have multiple chapters
 summary = generate_summary(raw_content, chapters, llm=llm)
 print(summary)
+```
+
+### Customizing Gemini Parameters
+
+You can customize the Gemini API parameters:
+
+```python
+# Configure with custom parameters
+llm = configure_gemini_llm(
+    model_name="gemini-1.5-flash",  # Use a different model
+    temperature=0.3                  # Adjust temperature for more varied outputs
+)
+
+# Use the customized model
+course = create_course(raw_content, llm=llm)
 ```
 
 ## API Reference
@@ -178,41 +161,15 @@ print(summary)
 
 ::: cascadellm.coursemaker.parse_chapter_content
 
-## Customization
-
-The module now accepts an LLM parameter in all generation functions, allowing for easy customization:
-
-```python
-# Example with a custom LLM configuration
-from langchain.llms import HuggingFacePipeline
-from transformers import pipeline
-import torch
-
-# Create a custom Hugging Face pipeline LLM
-pipe = pipeline(
-    "text-generation",
-    model="bigscience/bloomz-7b1",
-    torch_dtype=torch.bfloat16,
-    device_map="auto",
-    max_new_tokens=512
-)
-
-custom_llm = HuggingFacePipeline(pipeline=pipe)
-
-# Use with the course generator
-course = create_course(raw_content, llm=custom_llm)
-```
-
 ## Limitations
 
 - The current implementation is designed for text content only.
 - All output is in simplified Chinese.
-- For production use, an LLM instance must be provided explicitly.
+- For production use, a valid Google API key must be provided.
 
 ## Future Enhancements
 
 Future versions may include:
 - Support for multiple languages
 - Image and multimedia content handling
-- Customizable output formats
-- Direct integration with additional popular LLM providers 
+- Customizable output formats 

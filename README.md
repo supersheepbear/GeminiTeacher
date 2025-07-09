@@ -35,13 +35,11 @@ cd CascadeLLM
 pip install -e .
 ```
 
-## Setting Up LLM Access
+## Setting Up Google Gemini API
 
-The current implementation uses placeholders for LLM access, which must be configured before use. Here's how to set up Google's Gemini API:
+This package uses Google's Gemini API for all LLM operations. Follow these steps to set up:
 
-### Using Google's Gemini API
-
-1. Install the Gemini package for LangChain:
+1. Install the required package:
 
 ```bash
 pip install langchain-google-genai
@@ -60,42 +58,20 @@ $env:GOOGLE_API_KEY = "your_gemini_api_key_here"
 set GOOGLE_API_KEY=your_gemini_api_key_here
 ```
 
-3. Update the course generator to use Gemini:
-
-```python
-from langchain_google_genai import ChatGoogleGenerativeAI
-from cascadellm.coursemaker import create_course
-
-# Create a wrapper function to use Gemini
-def create_course_with_gemini(content, temperature=0.0):
-    # Create the Gemini model
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-pro",
-        temperature=temperature
-    )
-    
-    # To use this model, you need to modify the source functions
-    # to accept and use this LLM instance instead of the placeholders
-    
-    # This is a simplified example - a more complete implementation would 
-    # modify the internal functions or add parameters to accept the LLM
-    
-    return create_course(content, temperature=temperature)
-```
-
-For a complete implementation, you would need to modify the source code to inject the LLM instance. See the [documentation](https://supersheepbear.github.io/CascadeLLM/coursemaker/) for more details.
-
 ## Quick Start
 
 ```python
-from cascadellm.coursemaker import create_course
+from cascadellm.coursemaker import create_course, configure_gemini_llm
 
 # Load your content
 with open("your_content.txt", "r") as f:
     content = f.read()
 
+# Configure Gemini API
+llm = configure_gemini_llm()
+
 # Generate a structured course
-course = create_course(content)
+course = create_course(content, llm=llm)
 
 # Access the course components
 print(f"Generated {len(course.chapters)} chapters")
