@@ -124,6 +124,7 @@ def main():
     parser.add_argument("input", help="Path to the input content file")
     parser.add_argument("--config", default="config.yaml", help="Path to configuration file")
     parser.add_argument("--title", default="Generated Course", help="Title of the course")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
     args = parser.parse_args()
     
     # Get absolute path to config file (relative to script location)
@@ -133,7 +134,13 @@ def main():
     # Load configuration
     config = load_config(config_path)
     
-    # Set up environment variables
+    # Get API key from configuration
+    api_key = config.get('api', {}).get('google_api_key')
+    if not api_key:
+        print("Error: Google API key not found in configuration")
+        sys.exit(1)
+    
+    # Set up environment variables (for backward compatibility)
     setup_environment(config)
     
     # Read input content
@@ -142,20 +149,42 @@ def main():
     # Configure the LLM
     model_name = config.get('model', {}).get('name', 'gemini-1.5-pro')
     temperature = config.get('model', {}).get('temperature', 0.0)
-    llm = configure_gemini_llm(model_name=model_name, temperature=temperature)
     
-    # Generate the course
-    print(f"Generating course: {args.title}")
-    print(f"Using model: {model_name} (temperature: {temperature})")
-    course = create_course(content, llm=llm)
+    if args.verbose:
+        print(f"Configuring LLM with model: {model_name} (temperature: {temperature})")
     
-    # Save the course
-    output_dir = config.get('course', {}).get('output_dir', 'output')
-    output_dir = os.path.join(script_dir, output_dir)
-    save_course_to_files(args.title, course, output_dir)
-    
-    print(f"Course generated with {len(course.chapters)} chapters")
-    print(f"Output saved to: {output_dir}")
+    try:
+        # Pass the API key directly to avoid authentication issues
+        llm = configure_gemini_llm(
+            api_key=api_key,
+            model_name=model_name, 
+            temperature=temperature
+        )
+        
+        # Generate the course with verbose logging
+        if args.verbose:
+            print(f"Generating course: {args.title}")
+            
+        course = create_course(content, llm=llm, verbose=args.verbose)
+        
+        # Save the course
+        output_dir = config.get('course', {}).get('output_dir', 'output')
+        output_dir = os.path.join(script_dir, output_dir)
+        
+        if args.verbose:
+            print(f"Saving course with {len(course.chapters)} chapters to {output_dir}")
+            
+        save_course_to_files(args.title, course, output_dir)
+        
+        print(f"Course generated with {len(course.chapters)} chapters")
+        print(f"Output saved to: {output_dir}")
+        
+    except Exception as e:
+        print(f"Error generating course: {e}")
+        if args.verbose:
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == "__main__":

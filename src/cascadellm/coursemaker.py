@@ -185,10 +185,20 @@ def configure_gemini_llm(api_key: Optional[str] = None, model_name: str = "gemin
             "Please install it with: pip install langchain-google-genai"
         )
     
+    # Use the provided API key or get it from environment variables
+    if api_key is None:
+        import os
+        api_key = os.environ.get("GOOGLE_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "No API key provided. Either pass an api_key parameter or "
+                "set the GOOGLE_API_KEY environment variable."
+            )
+    
     return ChatGoogleGenerativeAI(
-        google_api_key=api_key,
         model=model_name,
-        temperature=temperature
+        temperature=temperature,
+        google_api_key=api_key
     )
 
 
@@ -409,7 +419,7 @@ def generate_summary(content: str, chapters: List[ChapterContent], llm: Optional
     return result.get("text", "")
 
 
-def create_course(content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0) -> Course:
+def create_course(content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0, verbose: bool = False) -> Course:
     """
     Create a complete structured course from raw content.
     
@@ -428,6 +438,9 @@ def create_course(content: str, llm: Optional[BaseLanguageModel] = None, tempera
     temperature : float, optional
         The temperature setting for the LLM, affecting randomness in output.
         Default is 0.0 (deterministic output).
+    verbose : bool, optional
+        Whether to print progress messages during course generation.
+        Default is False.
     
     Returns
     ----
@@ -444,14 +457,22 @@ def create_course(content: str, llm: Optional[BaseLanguageModel] = None, tempera
     
     # If no LLM is provided, configure Gemini
     if llm is None:
+        if verbose:
+            print("Configuring default Gemini LLM...")
         llm = get_default_llm(temperature)
     
     # Step 1: Generate the table of contents
+    if verbose:
+        print("Generating table of contents...")
     chapter_titles = generate_toc(content, llm=llm, temperature=temperature)
+    if verbose:
+        print(f"Generated {len(chapter_titles)} chapter titles")
     
     # Step 2: Generate content for each chapter
     chapters = []
-    for title in chapter_titles:
+    for i, title in enumerate(chapter_titles):
+        if verbose:
+            print(f"Generating chapter {i+1}/{len(chapter_titles)}: {title}")
         chapter = generate_chapter(title, content, llm=llm, temperature=temperature)
         chapters.append(chapter)
     
@@ -459,7 +480,11 @@ def create_course(content: str, llm: Optional[BaseLanguageModel] = None, tempera
     
     # Step 3: Generate the course summary
     if chapters:
+        if verbose:
+            print("Generating course summary...")
         course.summary = generate_summary(content, chapters, llm=llm, temperature=temperature)
+        if verbose:
+            print("Course generation complete!")
     
     return course
 

@@ -1,1 +1,1 @@
-uv run generate_course.py sample_input.txt --title "AI Fundamentals"
+uv run generate_course.py sample_input.txt --title "knowledge" --verbose
