@@ -5,6 +5,7 @@ This application uses the CascadeLLM coursemaker module to generate structured e
 ## Features
 
 - Generate structured courses with chapters, explanations, and summaries
+- **Process various file formats** including PDF, DOCX, PPTX, and more, by automatically converting them to Markdown
 - Two chapter generation modes: adaptive (based on content complexity) or fixed count
 - Configure API keys and model settings via YAML configuration
 - Output course content as Markdown files
@@ -26,10 +27,31 @@ This application uses the CascadeLLM coursemaker module to generate structured e
       google_api_key: "your_gemini_api_key_here"
     ```
 
+## Supported Input Formats
+
+Thanks to the integration of the `markitdown` library, this application can accept a wide variety of input file formats beyond plain text. The script will automatically detect the file type and convert it to Markdown before generating the course.
+
+Supported formats include, but are not limited to:
+-   PDF (`.pdf`)
+-   Microsoft Word (`.docx`)
+-   Microsoft PowerPoint (`.pptx`)
+-   Microsoft Excel (`.xlsx`, `.xls`)
+-   HTML (`.html`)
+-   EPub (`.epub`)
+-   And many other text-based formats.
+
+For a full list of supported formats, please refer to the [markitdown documentation](https://github.com/microsoft/markitdown).
+
 ## Usage
 
 To run the course generator, use the `uv run` command from the project root, followed by the path to the script and any desired arguments.
 
+**Example with a PDF file:**
+```bash
+uv run python app/generate_course.py app/sample.pdf --title "My PDF Course"
+```
+
+**Example with a text file:**
 ```bash
 uv run python app/generate_course.py app/sample_input.txt --title "AI Fundamentals"
 ```

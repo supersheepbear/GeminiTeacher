@@ -185,3 +185,45 @@ The user wants to add two modes to the app for chapter generation:
   - [x] Add tests for Mode 1 (Adaptive)
   - [x] Add tests for Mode 2 (Fixed)
   - [x] Verify backward compatibility 
+
+# Feature: Multi-Format Input Support via Pre-processing
+
+### Background and Motivation
+
+The user wants the application to accept input files in formats other than plain text, such as PDF. The plan is to pre-process these files and convert them into clean Markdown, which is an ideal input format for the downstream LLM that generates the course.
+
+### Key Challenges and Analysis
+
+After initial planning, the user decided to use the existing `markitdown` library from Microsoft instead of building a custom conversion solution. This is an excellent decision for several reasons:
+
+1.  **Robust and Maintained**: `markitdown` is a popular, open-source tool specifically designed for converting various document types (including PDF, DOCX, PPTX, and more) into LLM-friendly Markdown.
+2.  **Avoids Reinventing the Wheel**: Using a battle-tested library saves significant development time and provides a more reliable and feature-rich solution than a custom implementation.
+3.  **Extensibility**: It has a plugin system and supports advanced backends like Azure Document Intelligence, offering powerful options for future enhancements.
+
+**Decision**: We will integrate the `markitdown` library to handle all file-to-Markdown conversions. Our `converter` module will act as a lightweight wrapper around this library.
+
+### High-level Task Breakdown
+
+The plan has been simplified to focus on integrating the `markitdown` library.
+
+1.  **Integrate Dependency**: Add `'markitdown[pdf]'` to the project dependencies in `pyproject.toml`.
+2.  **Implement Converter Wrapper**: In `src/cascadellm/converter.py`, implement a `convert_to_markdown` function that initializes the `MarkItDown` class and uses it to convert the input file.
+3.  **Write Wrapper Tests**: In `tests/test_converter.py`, write unit tests that mock the `MarkItDown` object to ensure our wrapper function calls it correctly.
+4.  **Integrate into the Main App**: Modify `app/generate_course.py` to check the input file extension and call the new converter function for supported types.
+5.  **Update Documentation**: Update `app/README.md` to reflect the new capabilities and any new setup steps required for the dependency.
+
+### Project Status Board
+
+- [x] **Task 1: Setup Converter Module**
+  - [x] Create `src/cascadellm/converter.py`
+  - [x] Create `tests/test_converter.py`
+- [x] **Task 2: Integrate `markitdown`**
+  - [x] Add `markitdown[pdf]` to `pyproject.toml`
+  - [x] Implement the wrapper function in `converter.py`
+  - [x] Write unit tests for the wrapper
+- [x] **Task 3: Integrate into Main App**
+  - [x] Update `app/generate_course.py` to call the converter
+  - [x] Test the full integrated workflow
+- [x] **Task 4: Update Docs**
+  - [x] Update `app/README.md` to document new supported formats
+``` 

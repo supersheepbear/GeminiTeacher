@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 
 from cascadellm.coursemaker import create_course, configure_gemini_llm
+from cascadellm.converter import convert_to_markdown
 
 
 def load_config(config_path: str) -> Dict[str, Any]:
@@ -146,8 +147,24 @@ def main():
     # Set up environment variables (for backward compatibility)
     setup_environment(config)
     
-    # Read input content
-    content = read_input_content(args.input)
+    # Define text-based extensions that do not need conversion
+    text_extensions = {".txt", ".md"}
+    input_path = Path(args.input)
+
+    # Convert non-text files to Markdown before processing
+    if input_path.suffix.lower() not in text_extensions:
+        if args.verbose:
+            print(f"Input file is not plain text. Converting {args.input} to Markdown...")
+        try:
+            content = convert_to_markdown(input_path)
+            if args.verbose:
+                print("Conversion successful.")
+        except Exception as e:
+            print(f"Error converting file to Markdown: {e}")
+            sys.exit(1)
+    else:
+        # Read input content directly for text files
+        content = read_input_content(args.input)
     
     # Configure the LLM
     model_name = config.get('model', {}).get('name', 'gemini-1.5-pro')
