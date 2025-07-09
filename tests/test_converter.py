@@ -13,7 +13,9 @@ def test_convert_to_markdown_basic_usage():
     # Arrange
     # Create a mock instance for the MarkItDown class
     mock_instance = MagicMock()
-    mock_instance.convert_to_markdown.return_value = "# Mocked Markdown"
+    mock_result = MagicMock()
+    mock_result.text_content = "# Mocked Markdown"
+    mock_instance.convert.return_value = mock_result
     mock_markitdown = MagicMock()
     mock_markitdown.MarkItDown.return_value = mock_instance
     
@@ -30,8 +32,8 @@ def test_convert_to_markdown_basic_usage():
             result = convert_to_markdown(file_path)
 
     # Assert
-    # Verify that the convert_to_markdown method was called on the instance with the correct file path
-    mock_instance.convert_to_markdown.assert_called_once_with(mock_path_instance)
+    # Verify that the convert method was called on the instance with the correct file path
+    mock_instance.convert.assert_called_once_with(str(mock_path_instance))
 
     # Verify that the function returns the expected text content
     assert result == "# Mocked Markdown"
@@ -44,7 +46,9 @@ def test_convert_to_markdown_with_output_dir():
     # Arrange
     # Create a mock instance for the MarkItDown class
     mock_instance = MagicMock()
-    mock_instance.convert_to_markdown.return_value = "# Mocked Markdown"
+    mock_result = MagicMock()
+    mock_result.text_content = "# Mocked Markdown"
+    mock_instance.convert.return_value = mock_result
     mock_markitdown = MagicMock()
     mock_markitdown.MarkItDown.return_value = mock_instance
     

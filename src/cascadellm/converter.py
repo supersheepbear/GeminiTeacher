@@ -55,7 +55,8 @@ def convert_to_markdown(file_path: Union[str, Path], output_dir: Optional[str] =
     converter = MarkItDown()
     
     # Convert the file to Markdown
-    markdown_text = converter.convert_to_markdown(file_path)
+    result = converter.convert(str(file_path))
+    markdown_text = result.text_content
     
     # Save the intermediate Markdown file if output_dir is specified
     if output_dir:
