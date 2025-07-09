@@ -2,6 +2,10 @@ docs/source
 
 # From https://raw.githubusercontent.com/github/gitignore/main/Python.gitignore
 
+# Application specific
+app/config.yaml
+app/output/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
