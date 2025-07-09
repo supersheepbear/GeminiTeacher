@@ -7,6 +7,7 @@ This application uses the CascadeLLM coursemaker module to generate structured e
 - Generate structured courses with chapters, explanations, and summaries
 - **Process various file formats** including PDF, DOCX, PPTX, and more, by automatically converting them to Markdown
 - Two chapter generation modes: adaptive (based on content complexity) or fixed count
+- **Progressive saving**: Each chapter is saved as soon as it's generated, allowing you to review content while generation continues
 - Configure API keys and model settings via YAML configuration
 - Output course content as Markdown files
 - Customize model parameters like temperature
@@ -118,6 +119,8 @@ Each chapter file includes:
 - Summary
 - Detailed explanation
 - Extension thoughts
+
+**Note**: With progressive saving enabled, each chapter is saved to disk immediately after it's generated, rather than waiting for the entire course to complete. This allows you to start reviewing content while the AI continues generating additional chapters.
 
 ## Configuration
 

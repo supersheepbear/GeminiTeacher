@@ -104,6 +104,51 @@ def read_custom_prompt(file_path: str) -> str:
         sys.exit(1)
 
 
+def save_chapter_to_file(course_title: str, chapter: Any, chapter_index: int, output_dir: str) -> str:
+    """
+    Save a single chapter to a file.
+    
+    Parameters
+    ----------
+    course_title : str
+        Title of the course
+    chapter : Any
+        Chapter content object
+    chapter_index : int
+        Index of the chapter (0-based)
+    output_dir : str
+        Directory to save the chapter file
+        
+    Returns
+    -------
+    str
+        Path to the saved chapter file
+    """
+    # Create output directory if it doesn't exist
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    
+    # Sanitize course title for filename
+    safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in course_title)
+    safe_title = safe_title.replace(" ", "_")
+    
+    # Create chapter filename
+    chapter_filename = f"{safe_title}_chapter_{chapter_index+1:02d}.md"
+    chapter_path = output_path / chapter_filename
+    
+    # Save chapter content
+    with open(chapter_path, 'w', encoding='utf-8') as f:
+        f.write(f"# {chapter.title}\n\n")
+        f.write("## Summary\n\n")
+        f.write(f"{chapter.summary}\n\n")
+        f.write("## Explanation\n\n")
+        f.write(f"{chapter.explanation}\n\n")
+        f.write("## Extension\n\n")
+        f.write(f"{chapter.extension}\n")
+    
+    return str(chapter_path)
+
+
 def save_course_to_files(course_title: str, course_content: Dict[str, Any], output_dir: str) -> None:
     """
     Save generated course to files.
@@ -132,15 +177,139 @@ def save_course_to_files(course_title: str, course_content: Dict[str, Any], outp
     
     # Save each chapter
     for i, chapter in enumerate(course_content.chapters):
-        chapter_filename = f"{safe_title}_chapter_{i+1:02d}.md"
-        with open(output_path / chapter_filename, 'w', encoding='utf-8') as f:
-            f.write(f"# {chapter.title}\n\n")
-            f.write("## Summary\n\n")
-            f.write(f"{chapter.summary}\n\n")
-            f.write("## Explanation\n\n")
-            f.write(f"{chapter.explanation}\n\n")
-            f.write("## Extension\n\n")
-            f.write(f"{chapter.extension}\n")
+        save_chapter_to_file(course_title, chapter, i, output_dir)
+
+
+def create_course_with_progressive_save(
+    content: str,
+    course_title: str,
+    output_dir: str,
+    llm=None,
+    temperature: float = 0.0,
+    verbose: bool = False,
+    max_chapters: int = 10,
+    fixed_chapter_count: bool = False,
+    custom_prompt: Optional[str] = None,
+    logger=None
+) -> Any: # Changed return type hint to Any as Course is not imported here
+    """
+    Create a course and save each chapter as it's generated.
+    
+    This function wraps the create_course function from cascadellm.coursemaker
+    but saves each chapter to disk immediately after it's generated.
+    
+    Parameters
+    ----------
+    content : str
+        The raw content to transform into a course
+    course_title : str
+        Title of the course
+    output_dir : str
+        Directory to save the course files
+    llm : BaseLanguageModel, optional
+        Language model to use
+    temperature : float, optional
+        Temperature for generation
+    verbose : bool, optional
+        Whether to print progress messages
+    max_chapters : int, optional
+        Maximum number of chapters
+    fixed_chapter_count : bool, optional
+        Whether to use fixed chapter count
+    custom_prompt : Optional[str], optional
+        Custom prompt instructions
+    logger : logging.Logger, optional
+        Logger for messages
+    
+    Returns
+    -------
+    Course
+        The generated course object
+    """
+    from cascadellm.coursemaker import Course, ChapterContent, generate_toc, generate_chapter, generate_summary
+    
+    # Initialize the course with the original content
+    course = Course(content=content)
+    
+    # If no LLM is provided, configure Gemini
+    if llm is None:
+        if verbose:
+            print("Configuring default Gemini LLM...")
+        from cascadellm.coursemaker import get_default_llm
+        llm = get_default_llm(temperature)
+    
+    # Step 1: Generate the table of contents
+    if verbose:
+        print(f"Generating table of contents (max {max_chapters} chapters)...")
+        if fixed_chapter_count:
+            print(f"Using fixed chapter count mode: exactly {max_chapters} chapters")
+        if custom_prompt:
+            print("Using custom prompt for chapter generation")
+    
+    chapter_titles = generate_toc(
+        content, 
+        llm=llm, 
+        temperature=temperature, 
+        max_chapters=max_chapters,
+        fixed_chapter_count=fixed_chapter_count
+    )
+    
+    if verbose:
+        print(f"Generated {len(chapter_titles)} chapter titles")
+    
+    # Step 2: Generate content for each chapter and save progressively
+    chapters = []
+    for i, title in enumerate(chapter_titles):
+        if verbose:
+            print(f"Generating chapter {i+1}/{len(chapter_titles)}: {title}")
+        if logger:
+            logger.info(f"Generating chapter {i+1}/{len(chapter_titles)}: {title}")
+        
+        # Generate the chapter
+        chapter = generate_chapter(
+            title, 
+            content, 
+            llm=llm, 
+            temperature=temperature,
+            custom_prompt=custom_prompt
+        )
+        chapters.append(chapter)
+        
+        # Save the chapter immediately
+        chapter_path = save_chapter_to_file(course_title, chapter, i, output_dir)
+        if logger:
+            logger.info(f"Saved chapter {i+1} to {chapter_path}")
+        if verbose:
+            print(f"Saved chapter {i+1} to {chapter_path}")
+    
+    course.chapters = chapters
+    
+    # Step 3: Generate the course summary
+    if chapters:
+        if verbose:
+            print("Generating course summary...")
+        if logger:
+            logger.info("Generating course summary...")
+            
+        course.summary = generate_summary(content, chapters, llm=llm, temperature=temperature)
+        
+        # Save the summary
+        output_path = Path(output_dir)
+        safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in course_title)
+        safe_title = safe_title.replace(" ", "_")
+        summary_path = output_path / f"{safe_title}_summary.md"
+        
+        with open(summary_path, 'w', encoding='utf-8') as f:
+            f.write(f"# {course_title}\n\n")
+            f.write(course.summary)
+            
+        if logger:
+            logger.info(f"Saved course summary to {summary_path}")
+        if verbose:
+            print(f"Saved course summary to {summary_path}")
+            print("Course generation complete!")
+    
+    return course
 
 
 def main():
@@ -231,6 +400,7 @@ def main():
     
     try:
         # Pass the API key directly to avoid authentication issues
+        from cascadellm.coursemaker import configure_gemini_llm
         llm = configure_gemini_llm(
             api_key=api_key,
             model_name=model_name, 
@@ -247,19 +417,19 @@ def main():
         if custom_prompt:
             logger.info("Using custom prompt for chapter generation")
             
-        course = create_course(
+        # Use the progressive save version instead of the original create_course
+        course = create_course_with_progressive_save(
             content, 
+            args.title,
+            output_dir,
             llm=llm, 
+            temperature=temperature,
             verbose=args.verbose,
             max_chapters=args.max_chapters,
             fixed_chapter_count=args.fixed_chapters,
-            custom_prompt=custom_prompt
+            custom_prompt=custom_prompt,
+            logger=logger
         )
-        
-        # Save the course
-        logger.info(f"Saving course with {len(course.chapters)} chapters to {output_dir}")
-            
-        save_course_to_files(args.title, course, output_dir)
         
         print(f"Course generated with {len(course.chapters)} chapters")
         print(f"Output saved to: {output_dir}")

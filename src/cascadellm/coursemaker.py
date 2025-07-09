@@ -71,7 +71,7 @@ def create_toc_prompt(max_chapters: int = 10, fixed_chapter_count: bool = False)
     if fixed_chapter_count:
         chapter_count_instruction = f"Create a logical structure with exactly {max_chapters} chapter titles in simplified Chinese."
     else:
-        chapter_count_instruction = f"Create a logical structure with 1-{max_chapters} chapter titles in simplified Chinese.\nDetermine the number of chapters based on the content depth."
+        chapter_count_instruction = f"Create a logical structure with number of chapters between 1 and {max_chapters} chapter titles in simplified Chinese. You don't have to always generate exactly {max_chapters} chapters. You have to Determine the number of chapters based on the content complexity very smartly."
     
     return ChatPromptTemplate.from_template(
         f"""You are a post-doctoral professional creating a structured learning curriculum.

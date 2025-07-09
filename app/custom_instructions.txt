@@ -1,0 +1,2 @@
+请你针对每一个能用scikit-learn 或者pytorch展示的概念， 都用实际的code展示， 并且用generated 数据来演示。
+学生可以尝试你的代码， 巩固概念， 并且尽可能visualize what happened.
