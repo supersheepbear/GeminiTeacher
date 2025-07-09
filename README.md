@@ -21,6 +21,14 @@ This repository contains various tools and modules for personal LLM projects.
 
 A key feature is the `coursemaker` module, which automatically transforms raw text content into a structured educational course. An example application demonstrating this functionality can be found in the `app` directory. See the `app/README.md` for instructions on how to run it.
 
+Key capabilities of the Course Generator include:
+
+- **Multi-format Input**: Process various document formats (PDF, DOCX, PPTX, etc.) by automatically converting them to Markdown
+- **Adaptive Chapter Generation**: AI determines the optimal number of chapters based on content complexity
+- **Fixed Chapter Count Mode**: Generate exactly the specified number of chapters when needed
+- **Custom Prompt Instructions**: Customize how the AI generates chapter explanations by providing additional instructions
+- **Structured Output**: Generate well-organized course materials with summaries, detailed explanations, and extension thoughts
+
 ## Installation
 
 This project is set up as a Python package. To install it for development, clone the repository and use `pip`:

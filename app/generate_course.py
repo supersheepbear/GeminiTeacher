@@ -81,6 +81,29 @@ def read_input_content(input_path: str) -> str:
         sys.exit(1)
 
 
+def read_custom_prompt(file_path: str) -> str:
+    """
+    Read custom prompt instructions from a file.
+    
+    Parameters
+    ----------
+    file_path : str
+        Path to the file containing custom prompt instructions
+        
+    Returns
+    -------
+    str
+        Content of the custom prompt file
+    """
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            custom_prompt = f.read().strip()
+        return custom_prompt
+    except Exception as e:
+        print(f"Error reading custom prompt file: {e}")
+        sys.exit(1)
+
+
 def save_course_to_files(course_title: str, course_content: Dict[str, Any], output_dir: str) -> None:
     """
     Save generated course to files.
@@ -131,6 +154,7 @@ def main():
     parser.add_argument("--max-chapters", type=int, default=10, help="Maximum number of chapters to generate")
     parser.add_argument("--fixed-chapters", action="store_true", 
                       help="If set, generates exactly --max-chapters chapters instead of adapting based on content complexity")
+    parser.add_argument("--custom-prompt", help="Path to a file containing custom instructions for chapter generation")
     parser.add_argument("--log-file", help="Path to log file (default: output/generation_log.txt)")
     args = parser.parse_args()
     
@@ -162,6 +186,16 @@ def main():
     logger.info(f"Starting course generation with config: {config_path}")
     logger.info(f"Input file: {args.input}")
     logger.info(f"Mode: {'Fixed' if args.fixed_chapters else 'Adaptive'} chapter count (max: {args.max_chapters})")
+    
+    # Read custom prompt if provided
+    custom_prompt = None
+    if args.custom_prompt:
+        try:
+            custom_prompt = read_custom_prompt(args.custom_prompt)
+            logger.info(f"Using custom prompt from: {args.custom_prompt}")
+        except Exception as e:
+            logger.error(f"Error reading custom prompt file: {e}", exc_info=True)
+            sys.exit(1)
     
     # Get API key from configuration
     api_key = config.get('api', {}).get('google_api_key')
@@ -209,13 +243,17 @@ def main():
             logger.info(f"Mode: Fixed chapter count (exactly {args.max_chapters} chapters)")
         else:
             logger.info(f"Mode: Adaptive chapter count (1-{args.max_chapters} chapters based on content)")
+        
+        if custom_prompt:
+            logger.info("Using custom prompt for chapter generation")
             
         course = create_course(
             content, 
             llm=llm, 
             verbose=args.verbose,
             max_chapters=args.max_chapters,
-            fixed_chapter_count=args.fixed_chapters
+            fixed_chapter_count=args.fixed_chapters,
+            custom_prompt=custom_prompt
         )
         
         # Save the course

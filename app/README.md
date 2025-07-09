@@ -64,6 +64,7 @@ uv run python app/generate_course.py app/sample_input.txt --title "AI Fundamenta
 - `--verbose`, `-v`: Enable verbose output
 - `--max-chapters`: Maximum number of chapters to generate (default: 10)
 - `--fixed-chapters`: If set, generates exactly `--max-chapters` chapters instead of adapting based on content complexity.
+- `--custom-prompt`: Path to a file containing custom instructions for chapter generation.
 
 ### Chapter Generation Modes
 
@@ -73,6 +74,25 @@ The application supports two modes for chapter generation:
 
 2.  **Fixed Mode**: The AI generates exactly the number of chapters specified by `--max-chapters`.
 
+### Custom Prompt Instructions
+
+You can customize how the AI generates chapter explanations by providing a file with custom instructions. These instructions will be appended to the "系统性讲解" (Systematic Explanation) section of each chapter's prompt.
+
+This feature is useful when you want to:
+- Focus on specific aspects of the content
+- Request more code examples or practical applications
+- Adjust the teaching style or depth of explanations
+- Add domain-specific guidance for the AI
+
+To use custom prompts, create a text file with your instructions and use the `--custom-prompt` flag:
+
+```bash
+# Example custom prompt file (my_instructions.txt):
+# 请特别关注实际应用案例，并提供更多代码示例。每个概念至少提供一个Python代码示例。
+
+uv run python app/generate_course.py app/sample_input.txt --title "Python Programming" --custom-prompt my_instructions.txt
+```
+
 ### Examples
 
 ```bash
@@ -81,6 +101,9 @@ uv run python app/generate_course.py app/sample_input.txt --title "Introduction 
 
 # Fixed mode - generates exactly 5 chapters
 uv run python app/generate_course.py app/sample_input.txt --title "Introduction to AI" --max-chapters 5 --fixed-chapters
+
+# Using custom prompt instructions
+uv run python app/generate_course.py app/sample_input.txt --title "Machine Learning" --custom-prompt custom_instructions.txt
 ```
 
 ## Output

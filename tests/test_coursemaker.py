@@ -211,6 +211,23 @@ def test_create_chapter_prompt_template():
     assert "拓展思考" in prompt_content
 
 
+def test_create_chapter_prompt_template_with_custom_prompt():
+    """Test that create_chapter_prompt_template accepts and includes a custom prompt."""
+    # Arrange
+    custom_prompt = "请特别关注实际应用案例，并提供更多代码示例。"
+    
+    # Act
+    prompt = create_chapter_prompt_template(custom_prompt=custom_prompt)
+    
+    # Assert
+    assert isinstance(prompt, ChatPromptTemplate)
+    # Check that the custom prompt is included in the template
+    messages = prompt.messages
+    prompt_content = str(messages[0].prompt)
+    assert "用户自定义指令：" in prompt_content
+    assert custom_prompt in prompt_content
+
+
 @patch('cascadellm.coursemaker.get_default_llm')
 @patch('cascadellm.coursemaker.LLMChain')
 def test_generate_chapter_returns_structured_content(mock_llm_chain, mock_get_default_llm):
@@ -282,6 +299,44 @@ def test_generate_chapter_with_explicit_llm(mock_llm_chain):
     
     # Verify the LLM was passed to the chain
     mock_llm_chain.assert_called_once_with(llm=mock_llm, prompt=ANY)
+
+
+@patch('cascadellm.coursemaker.get_default_llm')
+@patch('cascadellm.coursemaker.LLMChain')
+def test_generate_chapter_with_custom_prompt(mock_llm_chain, mock_get_default_llm):
+    """Test that generate_chapter passes custom_prompt to create_chapter_prompt_template."""
+    # Arrange
+    mock_llm = MagicMock()
+    mock_get_default_llm.return_value = mock_llm
+    
+    mock_chain_instance = MagicMock()
+    mock_llm_chain.return_value = mock_chain_instance
+    mock_chain_instance.invoke.return_value = {
+        "text": """# 标题与摘要
+This is a summary.
+
+# 系统性讲解
+This is an explanation.
+
+# 拓展思考
+This is an extension."""
+    }
+    
+    custom_prompt = "请特别关注实际应用案例，并提供更多代码示例。"
+    
+    # Act
+    result = generate_chapter("Test Chapter", "Some content", custom_prompt=custom_prompt)
+    
+    # Assert
+    assert isinstance(result, ChapterContent)
+    assert result.title == "Test Chapter"
+    
+    # Verify that create_chapter_prompt_template was called with custom_prompt
+    # We can't directly verify this since we can't mock the function in the same module,
+    # but we can check that LLMChain was created with a prompt that includes our custom prompt
+    mock_llm_chain.assert_called_once()
+    prompt_arg = mock_llm_chain.call_args[1]['prompt']
+    assert isinstance(prompt_arg, ChatPromptTemplate)
 
 
 @patch('cascadellm.coursemaker.get_default_llm')
@@ -416,30 +471,30 @@ def test_create_course_orchestrates_all_steps(mock_generate_summary, mock_genera
     # Arrange
     mock_llm = MagicMock()
     mock_get_default_llm.return_value = mock_llm
-
+    
     mock_generate_toc.return_value = ["Chapter 1", "Chapter 2"]
-
+    
     chapter1 = ChapterContent(
         title="Chapter 1",
         summary="Summary 1",
         explanation="Explanation 1",
         extension="Extension 1"
     )
-
+    
     chapter2 = ChapterContent(
         title="Chapter 2",
         summary="Summary 2",
         explanation="Explanation 2",
         extension="Extension 2"
     )
-
+    
     # Configure mocks to return predefined values
     mock_generate_chapter.side_effect = [chapter1, chapter2]
     mock_generate_summary.return_value = "Course summary"
-
+    
     # Act
     course = create_course("Test content", temperature=0.1)
-
+    
     # Assert
     assert isinstance(course, Course)
     assert course.content == "Test content"
@@ -447,25 +502,40 @@ def test_create_course_orchestrates_all_steps(mock_generate_summary, mock_genera
     assert course.chapters[0].title == "Chapter 1"
     assert course.chapters[1].title == "Chapter 2"
     assert course.summary == "Course summary"
-
+    
     # Verify the correct interactions occurred
     mock_get_default_llm.assert_called_once_with(0.1)
     mock_generate_toc.assert_called_once_with(
-        "Test content", 
-        llm=mock_llm, 
-        temperature=0.1, 
-        max_chapters=10, 
+        "Test content",
+        llm=mock_llm,
+        temperature=0.1,
+        max_chapters=10,
         fixed_chapter_count=False
     )
     
     # Check that generate_chapter was called for each chapter
     assert mock_generate_chapter.call_count == 2
-    mock_generate_chapter.assert_any_call("Chapter 1", "Test content", llm=mock_llm, temperature=0.1)
-    mock_generate_chapter.assert_any_call("Chapter 2", "Test content", llm=mock_llm, temperature=0.1)
+    mock_generate_chapter.assert_any_call(
+        "Chapter 1", 
+        "Test content", 
+        llm=mock_llm, 
+        temperature=0.1,
+        custom_prompt=None
+    )
+    mock_generate_chapter.assert_any_call(
+        "Chapter 2", 
+        "Test content", 
+        llm=mock_llm, 
+        temperature=0.1,
+        custom_prompt=None
+    )
     
     # Check that generate_summary was called with the chapters
     mock_generate_summary.assert_called_once_with(
-        "Test content", [chapter1, chapter2], llm=mock_llm, temperature=0.1
+        "Test content", 
+        [chapter1, chapter2], 
+        llm=mock_llm, 
+        temperature=0.1
     )
 
 
@@ -480,26 +550,37 @@ def test_create_course_with_explicit_llm(
     mock_generate_toc.return_value = ["Chapter 1"]
     mock_generate_chapter.return_value = ChapterContent(title="Chapter 1", summary="Summary")
     mock_generate_summary.return_value = "Summary"
-
+    
     # Create a mock LLM
     mock_llm = MagicMock()
-
+    
     # Act
     course = create_course("Test content", llm=mock_llm)
-
+    
     # Assert
     assert isinstance(course, Course)
     
     # Verify LLM was passed to all sub-functions
     mock_generate_toc.assert_called_once_with(
-        "Test content", 
-        llm=mock_llm, 
-        temperature=0.0, 
-        max_chapters=10, 
+        "Test content",
+        llm=mock_llm,
+        temperature=0.0,
+        max_chapters=10,
         fixed_chapter_count=False
     )
-    mock_generate_chapter.assert_called_once_with("Chapter 1", "Test content", llm=mock_llm, temperature=0.0)
-    mock_generate_summary.assert_called_once()
+    mock_generate_chapter.assert_called_once_with(
+        "Chapter 1", 
+        "Test content", 
+        llm=mock_llm, 
+        temperature=0.0,
+        custom_prompt=None
+    )
+    mock_generate_summary.assert_called_once_with(
+        "Test content", 
+        [mock_generate_chapter.return_value], 
+        llm=mock_llm, 
+        temperature=0.0
+    )
 
 
 @patch('cascadellm.coursemaker.get_default_llm')
@@ -570,6 +651,45 @@ def test_create_course_with_fixed_chapter_count(
     )
     # Verify it generated chapters for all the returned chapter titles
     assert mock_generate_chapter.call_count == 3
+
+
+@patch('cascadellm.coursemaker.get_default_llm')
+@patch('cascadellm.coursemaker.generate_toc')
+@patch('cascadellm.coursemaker.generate_chapter')
+@patch('cascadellm.coursemaker.generate_summary')
+def test_create_course_with_custom_prompt(
+    mock_generate_summary, mock_generate_chapter, mock_generate_toc, mock_get_default_llm
+):
+    """Test that create_course passes custom_prompt to generate_chapter."""
+    # Arrange
+    mock_llm = MagicMock()
+    mock_get_default_llm.return_value = mock_llm
+    
+    # Configure mocks to return appropriate values
+    mock_generate_toc.return_value = ["Chapter 1", "Chapter 2"]
+    mock_generate_chapter.return_value = ChapterContent(
+        title="Chapter X",
+        summary="Summary",
+        explanation="Explanation",
+        extension="Extension"
+    )
+    mock_generate_summary.return_value = "Course summary"
+    
+    # Create a custom prompt
+    custom_prompt = "请特别关注实际应用案例，并提供更多代码示例。"
+    
+    # Act
+    result = create_course("Some content", custom_prompt=custom_prompt)
+    
+    # Assert
+    assert isinstance(result, Course)
+    assert len(result.chapters) == 2
+    
+    # Verify that generate_chapter was called with custom_prompt
+    assert mock_generate_chapter.call_count == 2
+    for call_args in mock_generate_chapter.call_args_list:
+        assert 'custom_prompt' in call_args[1]
+        assert call_args[1]['custom_prompt'] == custom_prompt
 
 
 @patch('cascadellm.coursemaker.configure_gemini_llm')

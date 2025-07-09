@@ -90,12 +90,17 @@ def create_toc_prompt(max_chapters: int = 10, fixed_chapter_count: bool = False)
     )
 
 
-def create_chapter_prompt_template() -> ChatPromptTemplate:
+def create_chapter_prompt_template(custom_prompt: Optional[str] = None) -> ChatPromptTemplate:
     """
     Create a prompt template for generating chapter explanations.
     
     This template instructs the LLM to generate a structured explanation
     for a single chapter, based on its title and the original content.
+    
+    Parameters
+    ----
+    custom_prompt : Optional[str], optional
+        Custom instructions to append to the "系统性讲解" section. Default is None.
     
     Returns
     ----
@@ -106,23 +111,33 @@ def create_chapter_prompt_template() -> ChatPromptTemplate:
     -----
     >>> prompt = create_chapter_prompt_template()
     >>> prompt.format(chapter_title="Introduction to AI", content="...")
+    
+    >>> custom = "请特别关注实际应用案例，并提供更多代码示例。"
+    >>> prompt = create_chapter_prompt_template(custom_prompt=custom)
     """
+    # Define the base systematic explanation section
+    systematic_explanation = """[这是最重要的部分。请尽量非常详细地解释所有知识点， 需要全面覆盖所有的原内容，原内容的举例也尽量保留。越详细越好， 不用节约token。
+         你可以补充原文缺失的背景信息或重新组织结构，目标是让学习者仅凭你的讲解就能完全掌握，无需阅读原文。
+         你需要以学习者为中心：关注初学者的认知起点，逐步引导，避免假设先验知识。结合实际案例或生活化例子，帮助理解抽象概念。
+         在讲解中，首次提到不超过10个核心术语时，请用括号附上英文翻译。例如：人工智能 (Artificial Intelligence)。
+         请你不要使用太多的子标题， 每一章都保持简洁的结构。 内容方面不需要简洁， 但是结构方面需要简洁。
+         你的回复要以教科书风格和实践为标准。]"""
+    
+    # Append custom prompt if provided
+    if custom_prompt:
+        systematic_explanation += f"\n\n         用户自定义指令：{custom_prompt}"
+    
     return ChatPromptTemplate.from_template(
-        """你是一位博士后级别专业教育工作者， 精通所有学科，正在创建一个结构化的学习课程。
+        f"""你是一位博士后， 也是一位专业教育工作者，精通所有学科。正在为初学者创建一个结构化的学习课程。
         
-        请基于以下内容，为章节《{chapter_title}》创建详细的讲解。
+        请基于以下内容，为章节《{{chapter_title}}》创建详细的讲解。
         你的回复必须使用以下结构：
         
         # 标题与摘要
         [此章节的标题，以及2-3句话概括主要内容]
         
         # 系统性讲解
-        [这是最重要的部分。请尽量非常详细地解释所有知识点， 需要全面覆盖所有的原内容，原内容的举例也尽量保留。越详细越好， 不用节约token。
-         你可以补充原文缺失的背景信息或重新组织结构，目标是让学习者仅凭你的讲解就能完全掌握，无需阅读原文。
-         你需要以学习者为中心：关注初学者的认知起点，逐步引导，避免假设先验知识。结合实际案例或生活化例子，帮助理解抽象概念。
-         在讲解中，首次提到不超过10个核心术语时，请用括号附上英文翻译。例如：人工智能 (Artificial Intelligence)。
-         请你不要使用太多的子标题， 每一章都保持简洁的结构。 内容方面不需要简洁， 但是结构方面需要简洁。
-         你的回复要以教科书风格和实践为标准。]
+        {systematic_explanation}
         
         # 拓展思考
         [提供额外的思考角度、应用建议或相关领域的连接， 保持简洁， 2-3个即可。]
@@ -130,7 +145,7 @@ def create_chapter_prompt_template() -> ChatPromptTemplate:
         请确保你的解释针对初学者，使用通俗易懂的语言，并保持逻辑清晰。请你遵循最佳教学方法。
         
         原始内容:
-        {content}
+        {{content}}
         """
     )
 
@@ -153,7 +168,7 @@ def create_summary_prompt_template() -> ChatPromptTemplate:
     >>> prompt.format(content="...", chapters_summary="...")
     """
     return ChatPromptTemplate.from_template(
-        """你是一位博士后级别专业教育工作者，正在为一门课程创建总结。
+        """你是一位博士后， 也是一位专业教育工作者，正在为一门面向新人课程创建总结。
         
         请基于原始内容和各章节的摘要，创建一个全面的课程总结。
         总结应该概括课程的主要内容、核心概念和学习价值。
@@ -339,7 +354,7 @@ def generate_toc(content: str, llm: Optional[BaseLanguageModel] = None, temperat
     return chapter_titles
 
 
-def generate_chapter(chapter_title: str, content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0) -> ChapterContent:
+def generate_chapter(chapter_title: str, content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0, custom_prompt: Optional[str] = None) -> ChapterContent:
     """
     Generate a structured explanation for a single chapter.
     
@@ -358,6 +373,8 @@ def generate_chapter(chapter_title: str, content: str, llm: Optional[BaseLanguag
     temperature : float, optional
         The temperature setting for the LLM, affecting randomness in output.
         Default is 0.0 (deterministic output).
+    custom_prompt : Optional[str], optional
+        Custom instructions to append to the "系统性讲解" section. Default is None.
     
     Returns
     ----
@@ -369,9 +386,12 @@ def generate_chapter(chapter_title: str, content: str, llm: Optional[BaseLanguag
     >>> chapter = generate_chapter("Machine Learning Basics", "Content about ML...")
     >>> print(chapter.summary)
     'A brief introduction to the fundamental concepts of machine learning...'
+    
+    >>> custom = "请特别关注实际应用案例，并提供更多代码示例。"
+    >>> chapter = generate_chapter("Machine Learning Basics", "Content about ML...", custom_prompt=custom)
     """
     # Create the prompt template
-    prompt = create_chapter_prompt_template()
+    prompt = create_chapter_prompt_template(custom_prompt=custom_prompt)
     
     # If no LLM is provided, configure Gemini
     if llm is None:
@@ -459,7 +479,7 @@ def generate_summary(content: str, chapters: List[ChapterContent], llm: Optional
     return result.get("text", "")
 
 
-def create_course(content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0, verbose: bool = False, max_chapters: int = 10, fixed_chapter_count: bool = False) -> Course:
+def create_course(content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0, verbose: bool = False, max_chapters: int = 10, fixed_chapter_count: bool = False, custom_prompt: Optional[str] = None) -> Course:
     """
     Create a complete structured course from raw content.
     
@@ -486,6 +506,8 @@ def create_course(content: str, llm: Optional[BaseLanguageModel] = None, tempera
     fixed_chapter_count : bool, optional
         If True, generate exactly max_chapters. If False, generate between 1 and max_chapters
         based on content complexity. Default is False.
+    custom_prompt : Optional[str], optional
+        Custom instructions to append to the "系统性讲解" section of each chapter. Default is None.
     
     Returns
     ----
@@ -503,6 +525,9 @@ def create_course(content: str, llm: Optional[BaseLanguageModel] = None, tempera
     >>> course = create_course("Simple content...", max_chapters=5, fixed_chapter_count=True)
     >>> print(f"Generated {len(course.chapters)} chapters")
     >>> # Will always print "Generated 5 chapters"
+    
+    >>> custom = "请特别关注实际应用案例，并提供更多代码示例。"
+    >>> course = create_course("Content about coding...", custom_prompt=custom)
     """
     # Initialize the course with the original content
     course = Course(content=content)
@@ -518,6 +543,8 @@ def create_course(content: str, llm: Optional[BaseLanguageModel] = None, tempera
         print(f"Generating table of contents (max {max_chapters} chapters)...")
         if fixed_chapter_count:
             print(f"Using fixed chapter count mode: exactly {max_chapters} chapters")
+        if custom_prompt:
+            print("Using custom prompt for chapter generation")
     
     chapter_titles = generate_toc(
         content, 
@@ -535,7 +562,13 @@ def create_course(content: str, llm: Optional[BaseLanguageModel] = None, tempera
     for i, title in enumerate(chapter_titles):
         if verbose:
             print(f"Generating chapter {i+1}/{len(chapter_titles)}: {title}")
-        chapter = generate_chapter(title, content, llm=llm, temperature=temperature)
+        chapter = generate_chapter(
+            title, 
+            content, 
+            llm=llm, 
+            temperature=temperature,
+            custom_prompt=custom_prompt
+        )
         chapters.append(chapter)
     
     course.chapters = chapters

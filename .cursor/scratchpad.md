@@ -226,4 +226,62 @@ The plan has been simplified to focus on integrating the `markitdown` library.
   - [x] Test the full integrated workflow
 - [x] **Task 4: Update Docs**
   - [x] Update `app/README.md` to document new supported formats
-``` 
+
+# Feature: Custom Prompt for Chapter Generation
+
+### Background and Motivation
+
+The user wants to add the ability to customize the prompts used for chapter generation. Specifically, they want to allow users to provide a custom prompt that will be appended to the "系统性讲解" (Systematic Explanation) section of each chapter's prompt. This will give users more control over the style, focus, or specific instructions for the content generation.
+
+### Key Challenges and Analysis
+
+1. **Prompt Injection**: We need to carefully inject the custom prompt at the right location in the existing prompt template without disrupting its structure.
+2. **Optional Feature**: This feature should be optional, with the system working normally if no custom prompt is provided.
+3. **File Input**: The custom prompt should be read from a text file provided by the user.
+4. **CLI Integration**: We need to update the command-line interface to accept a path to the custom prompt file.
+
+### High-level Task Breakdown
+
+1. **Update Prompt Template**:
+   - Modify the `create_chapter_prompt_template` function to accept an optional `custom_prompt` parameter
+   - Inject this custom prompt at the end of the "系统性讲解" section if provided
+
+2. **Update Core Functions**:
+   - Update `generate_chapter` to accept and pass the custom prompt
+   - Update `create_course` to accept and pass the custom prompt to all chapter generations
+
+3. **Add File Reading Logic**:
+   - Create a utility function to read the custom prompt from a file
+
+4. **Update CLI Interface**:
+   - Add a `--custom-prompt` flag to `app/generate_course.py` that accepts a file path
+   - Read the file and pass its contents to the `create_course` function
+
+5. **Testing**:
+   - Add tests for prompt generation with and without custom prompts
+   - Add tests for the file reading utility
+   - Ensure backward compatibility
+
+### Project Status Board
+
+- [x] **Task 1: Update Prompt Template**
+  - [x] Modify `create_chapter_prompt_template` to accept and use `custom_prompt` parameter
+  - [x] Update prompt template to include the custom prompt at the right location
+
+- [x] **Task 2: Update Core Functions**
+  - [x] Update `generate_chapter` to accept `custom_prompt` parameter
+  - [x] Update `create_course` to accept and pass the parameter
+
+- [x] **Task 3: Add File Reading Logic**
+  - [x] Create utility function to read custom prompt from file
+  - [x] Handle file not found and other potential errors
+
+- [x] **Task 4: Update CLI Interface**
+  - [x] Add `--custom-prompt` flag to argument parser
+  - [x] Implement file reading and error handling
+  - [x] Pass custom prompt to `create_course` function
+
+- [x] **Task 5: Add Tests**
+  - [x] Test prompt generation with and without custom prompt
+  - [x] Test file reading utility
+  - [x] Verify backward compatibility 
