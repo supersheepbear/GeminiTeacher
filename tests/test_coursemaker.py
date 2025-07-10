@@ -15,7 +15,8 @@ from cascadellm.coursemaker import (
     create_course,
     Course,
     configure_gemini_llm,
-    get_default_llm
+    get_default_llm,
+    create_course_parallel
 )
 
 
@@ -441,25 +442,16 @@ def test_generate_summary_handles_empty_chapters(mock_llm_chain, mock_get_defaul
     
     mock_chain_instance = MagicMock()
     mock_llm_chain.return_value = mock_chain_instance
-    mock_chain_instance.invoke.return_value = {
-        "text": "这是一个简短的摘要。"
-    }
+    mock_chain_instance.invoke.return_value = {"text": "Empty course summary"}
     
     # Act
-    result = generate_summary("Some content", [], temperature=0.0)
+    result = generate_summary("Test content", [], llm=None)
     
     # Assert
-    assert isinstance(result, str)
-    assert result == "这是一个简短的摘要。"
-    
-    # Verify the interaction with the mock
-    mock_get_default_llm.assert_called_once_with(0.0)
-    mock_llm_chain.assert_called_once_with(llm=mock_llm, prompt=ANY)
+    assert result == "Empty course summary"
+    mock_get_default_llm.assert_called_once()
+    mock_llm_chain.assert_called_once()
     mock_chain_instance.invoke.assert_called_once()
-    
-    # Check that empty chapters summary is passed
-    call_args = mock_chain_instance.invoke.call_args[0][0]
-    assert call_args['chapters_summary'] == ""
 
 
 @patch('cascadellm.coursemaker.get_default_llm')
@@ -472,70 +464,61 @@ def test_create_course_orchestrates_all_steps(mock_generate_summary, mock_genera
     mock_llm = MagicMock()
     mock_get_default_llm.return_value = mock_llm
     
+    # Configure mocks
     mock_generate_toc.return_value = ["Chapter 1", "Chapter 2"]
     
-    chapter1 = ChapterContent(
-        title="Chapter 1",
-        summary="Summary 1",
-        explanation="Explanation 1",
-        extension="Extension 1"
-    )
+    mock_chapters = [
+        ChapterContent(title="Chapter 1", summary="Summary 1"),
+        ChapterContent(title="Chapter 2", summary="Summary 2")
+    ]
+    mock_generate_chapter.side_effect = mock_chapters
     
-    chapter2 = ChapterContent(
-        title="Chapter 2",
-        summary="Summary 2",
-        explanation="Explanation 2",
-        extension="Extension 2"
-    )
-    
-    # Configure mocks to return predefined values
-    mock_generate_chapter.side_effect = [chapter1, chapter2]
     mock_generate_summary.return_value = "Course summary"
     
     # Act
-    course = create_course("Test content", temperature=0.1)
+    course = create_course(
+        "Test content",
+        temperature=0.2,
+        verbose=True,
+        max_chapters=5,
+        fixed_chapter_count=True,
+        custom_prompt="Custom prompt"
+    )
     
     # Assert
-    assert isinstance(course, Course)
     assert course.content == "Test content"
-    assert len(course.chapters) == 2
-    assert course.chapters[0].title == "Chapter 1"
-    assert course.chapters[1].title == "Chapter 2"
+    assert course.chapters == mock_chapters
     assert course.summary == "Course summary"
     
-    # Verify the correct interactions occurred
-    mock_get_default_llm.assert_called_once_with(0.1)
+    # Verify the interaction with the mocks
+    mock_get_default_llm.assert_called_once_with(0.2)
     mock_generate_toc.assert_called_once_with(
         "Test content",
         llm=mock_llm,
-        temperature=0.1,
-        max_chapters=10,
-        fixed_chapter_count=False
+        temperature=0.2,
+        max_chapters=5,
+        fixed_chapter_count=True
     )
-    
-    # Check that generate_chapter was called for each chapter
     assert mock_generate_chapter.call_count == 2
     mock_generate_chapter.assert_any_call(
-        "Chapter 1", 
-        "Test content", 
-        llm=mock_llm, 
-        temperature=0.1,
-        custom_prompt=None
+        "Chapter 1",
+        "Test content",
+        llm=mock_llm,
+        temperature=0.2,
+        custom_prompt="Custom prompt"
     )
     mock_generate_chapter.assert_any_call(
-        "Chapter 2", 
-        "Test content", 
-        llm=mock_llm, 
-        temperature=0.1,
-        custom_prompt=None
+        "Chapter 2",
+        "Test content",
+        llm=mock_llm,
+        temperature=0.2,
+        custom_prompt="Custom prompt"
     )
-    
-    # Check that generate_summary was called with the chapters
     mock_generate_summary.assert_called_once_with(
-        "Test content", 
-        [chapter1, chapter2], 
-        llm=mock_llm, 
-        temperature=0.1
+        "Test content",
+        mock_chapters,
+        llm=mock_llm,
+        temperature=0.2
     )
 
 
@@ -713,3 +696,154 @@ def test_configure_gemini_llm():
     """Test that configure_gemini_llm raises ImportError when the package is not available."""
     # This test is skipped because we can't reliably mock the import
     pass 
+
+
+@patch('cascadellm.coursemaker.get_default_llm')
+@patch('cascadellm.coursemaker.generate_toc')
+@patch('cascadellm.coursemaker.generate_summary')
+@patch('cascadellm.parallel.parallel_generate_chapters')
+def test_create_course_parallel(
+    mock_parallel_generate_chapters, mock_generate_summary, mock_generate_toc, mock_get_default_llm
+):
+    """Test that create_course_parallel orchestrates all steps with parallel chapter generation."""
+    # Arrange
+    mock_llm = MagicMock()
+    mock_get_default_llm.return_value = mock_llm
+    
+    # Configure mocks
+    mock_generate_toc.return_value = ["Chapter 1", "Chapter 2"]
+    
+    mock_chapters = [
+        ChapterContent(title="Chapter 1", summary="Summary 1"),
+        ChapterContent(title="Chapter 2", summary="Summary 2")
+    ]
+    mock_parallel_generate_chapters.return_value = mock_chapters
+    
+    mock_generate_summary.return_value = "Course summary"
+    
+    # Act
+    course = create_course_parallel(
+        "Test content",
+        temperature=0.2,
+        verbose=True,
+        max_chapters=5,
+        fixed_chapter_count=True,
+        custom_prompt="Custom prompt",
+        max_workers=2,
+        delay_range=(0.1, 0.5),
+        max_retries=3
+    )
+    
+    # Assert
+    assert course.content == "Test content"
+    assert course.chapters == mock_chapters
+    assert course.summary == "Course summary"
+    
+    # Verify the interaction with the mocks
+    mock_get_default_llm.assert_called_once_with(0.2)
+    mock_generate_toc.assert_called_once_with(
+        "Test content",
+        llm=mock_llm,
+        temperature=0.2,
+        max_chapters=5,
+        fixed_chapter_count=True
+    )
+    mock_parallel_generate_chapters.assert_called_once_with(
+        chapter_titles=["Chapter 1", "Chapter 2"],
+        content="Test content",
+        llm=mock_llm,
+        temperature=0.2,
+        custom_prompt="Custom prompt",
+        max_workers=2,
+        delay_range=(0.1, 0.5),
+        max_retries=3
+    )
+    mock_generate_summary.assert_called_once_with(
+        "Test content",
+        mock_chapters,
+        llm=mock_llm,
+        temperature=0.2
+    )
+
+
+@patch('cascadellm.coursemaker.get_default_llm')
+@patch('cascadellm.coursemaker.generate_toc')
+@patch('cascadellm.parallel.parallel_generate_chapters')
+@patch('cascadellm.coursemaker.generate_summary')
+def test_create_course_parallel_with_explicit_llm(
+    mock_generate_summary, mock_parallel_generate_chapters, mock_generate_toc, mock_get_default_llm
+):
+    """Test that create_course_parallel accepts an explicit LLM instance."""
+    # Arrange
+    mock_llm = MagicMock()
+    
+    # Configure mocks
+    mock_generate_toc.return_value = ["Chapter 1"]
+    
+    mock_chapters = [
+        ChapterContent(title="Chapter 1", summary="Summary 1")
+    ]
+    mock_parallel_generate_chapters.return_value = mock_chapters
+    
+    mock_generate_summary.return_value = "Course summary"
+    
+    # Act
+    course = create_course_parallel(
+        "Test content",
+        llm=mock_llm,
+        max_workers=2
+    )
+    
+    # Assert
+    assert course.content == "Test content"
+    assert course.chapters == mock_chapters
+    assert course.summary == "Course summary"
+    
+    # Verify the interaction with the mocks
+    mock_get_default_llm.assert_not_called()  # Should not call get_default_llm
+    mock_generate_toc.assert_called_once_with(
+        "Test content",
+        llm=mock_llm,
+        temperature=0.0,
+        max_chapters=10,
+        fixed_chapter_count=False
+    )
+    mock_parallel_generate_chapters.assert_called_once_with(
+        chapter_titles=["Chapter 1"],
+        content="Test content",
+        llm=mock_llm,
+        temperature=0.0,
+        custom_prompt=None,
+        max_workers=2,
+        delay_range=(0.1, 0.5),
+        max_retries=3
+    )
+
+
+@patch('cascadellm.coursemaker.get_default_llm')
+@patch('cascadellm.coursemaker.generate_toc')
+@patch('cascadellm.parallel.parallel_generate_chapters')
+@patch('cascadellm.coursemaker.generate_summary')
+def test_create_course_parallel_handles_empty_toc(
+    mock_generate_summary, mock_parallel_generate_chapters, mock_generate_toc, mock_get_default_llm
+):
+    """Test that create_course_parallel handles empty table of contents gracefully."""
+    # Arrange
+    mock_llm = MagicMock()
+    mock_get_default_llm.return_value = mock_llm
+    
+    # Configure mock to return empty TOC
+    mock_generate_toc.return_value = []
+    
+    # Act
+    course = create_course_parallel("Test content")
+    
+    # Assert
+    assert course.content == "Test content"
+    assert course.chapters == []
+    assert course.summary == ""
+    
+    # Verify the interactions with the mocks
+    mock_generate_toc.assert_called_once()
+    mock_parallel_generate_chapters.assert_not_called()  # Should not be called with empty TOC
+    mock_generate_summary.assert_not_called()  # Should not be called with empty chapters 

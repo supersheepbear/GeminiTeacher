@@ -325,6 +325,11 @@ def main():
                       help="If set, generates exactly --max-chapters chapters instead of adapting based on content complexity")
     parser.add_argument("--custom-prompt", help="Path to a file containing custom instructions for chapter generation")
     parser.add_argument("--log-file", help="Path to log file (default: output/generation_log.txt)")
+    parser.add_argument("--parallel", action="store_true", help="Use parallel processing for chapter generation")
+    parser.add_argument("--max-workers", type=int, help="Maximum number of worker processes for parallel generation")
+    parser.add_argument("--min-delay", type=float, default=0.1, help="Minimum delay between API requests in seconds (default: 0.1)")
+    parser.add_argument("--max-delay", type=float, default=0.5, help="Maximum delay between API requests in seconds (default: 0.5)")
+    parser.add_argument("--max-retries", type=int, default=3, help="Maximum number of retry attempts per chapter (default: 3)")
     args = parser.parse_args()
     
     # Get absolute path to config file (relative to script location)
@@ -355,6 +360,11 @@ def main():
     logger.info(f"Starting course generation with config: {config_path}")
     logger.info(f"Input file: {args.input}")
     logger.info(f"Mode: {'Fixed' if args.fixed_chapters else 'Adaptive'} chapter count (max: {args.max_chapters})")
+    
+    if args.parallel:
+        logger.info(f"Using parallel processing with max_workers={args.max_workers or 'auto'}")
+        logger.info(f"API request delay range: {args.min_delay}s - {args.max_delay}s")
+        logger.info(f"Max retries per chapter: {args.max_retries}")
     
     # Read custom prompt if provided
     custom_prompt = None
@@ -416,20 +426,40 @@ def main():
         
         if custom_prompt:
             logger.info("Using custom prompt for chapter generation")
+        
+        if args.parallel:
+            # Use parallel processing for chapter generation
+            from cascadellm.coursemaker import create_course_parallel
             
-        # Use the progressive save version instead of the original create_course
-        course = create_course_with_progressive_save(
-            content, 
-            args.title,
-            output_dir,
-            llm=llm, 
-            temperature=temperature,
-            verbose=args.verbose,
-            max_chapters=args.max_chapters,
-            fixed_chapter_count=args.fixed_chapters,
-            custom_prompt=custom_prompt,
-            logger=logger
-        )
+            course = create_course_parallel(
+                content, 
+                llm=llm, 
+                temperature=temperature,
+                verbose=args.verbose,
+                max_chapters=args.max_chapters,
+                fixed_chapter_count=args.fixed_chapters,
+                custom_prompt=custom_prompt,
+                max_workers=args.max_workers,
+                delay_range=(args.min_delay, args.max_delay),
+                max_retries=args.max_retries
+            )
+            
+            # Save the course files
+            save_course_to_files(args.title, course, output_dir)
+        else:
+            # Use the progressive save version instead of the original create_course
+            course = create_course_with_progressive_save(
+                content, 
+                args.title,
+                output_dir,
+                llm=llm, 
+                temperature=temperature,
+                verbose=args.verbose,
+                max_chapters=args.max_chapters,
+                fixed_chapter_count=args.fixed_chapters,
+                custom_prompt=custom_prompt,
+                logger=logger
+            )
         
         print(f"Course generated with {len(course.chapters)} chapters")
         print(f"Output saved to: {output_dir}")

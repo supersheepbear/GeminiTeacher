@@ -71,7 +71,7 @@ def create_toc_prompt(max_chapters: int = 10, fixed_chapter_count: bool = False)
     if fixed_chapter_count:
         chapter_count_instruction = f"Create a logical structure with exactly {max_chapters} chapter titles in simplified Chinese."
     else:
-        chapter_count_instruction = f"Create a logical structure with number of chapters between 1 and {max_chapters} chapter titles in simplified Chinese. You don't have to always generate exactly {max_chapters} chapters. You have to Determine the number of chapters based on the content complexity very smartly."
+        chapter_count_instruction = f"Create a logical structure with 1-{max_chapters} chapter titles in simplified Chinese. You don't have to always generate exactly {max_chapters} chapters. You have to Determine the number of chapters based on the content depth very smartly."
     
     return ChatPromptTemplate.from_template(
         f"""You are a post-doctoral professional creating a structured learning curriculum.
@@ -650,3 +650,135 @@ def parse_chapter_content(chapter_title: str, text: str) -> ChapterContent:
         chapter_content.extension = "\n".join(section_text["extension"]).strip()
     
     return chapter_content 
+
+
+def create_course_parallel(
+    content: str, 
+    llm: Optional[BaseLanguageModel] = None, 
+    temperature: float = 0.0, 
+    verbose: bool = False, 
+    max_chapters: int = 10, 
+    fixed_chapter_count: bool = False, 
+    custom_prompt: Optional[str] = None,
+    max_workers: Optional[int] = None,
+    delay_range: tuple = (0.1, 0.5),
+    max_retries: int = 3
+) -> Course:
+    """
+    Create a complete structured course from raw content using parallel processing.
+    
+    This function orchestrates the course creation process with parallel chapter generation:
+    1. Generate a table of contents
+    2. Create detailed explanations for each chapter in parallel
+    3. Generate a comprehensive course summary
+    
+    Parameters
+    ----
+    content : str
+        The raw content to transform into a course.
+    llm : BaseLanguageModel, optional
+        The language model to use for generation. If None, the function will
+        automatically configure a Gemini model.
+    temperature : float, optional
+        The temperature setting for the LLM, affecting randomness in output.
+        Default is 0.0 (deterministic output).
+    verbose : bool, optional
+        Whether to print progress messages during course generation.
+        Default is False.
+    max_chapters : int, optional
+        Maximum number of chapters to generate. Default is 10.
+    fixed_chapter_count : bool, optional
+        If True, generate exactly max_chapters. If False, generate between 1 and max_chapters
+        based on content complexity. Default is False.
+    custom_prompt : Optional[str], optional
+        Custom instructions to append to the "系统性讲解" section of each chapter. Default is None.
+    max_workers : Optional[int], optional
+        Maximum number of worker processes for parallel chapter generation.
+        If None, uses the default (typically the number of CPU cores).
+    delay_range : tuple, optional
+        Range (min, max) in seconds for the random delay between API requests.
+        Default is (0.1, 0.5).
+    max_retries : int, optional
+        Maximum number of retry attempts per chapter. Default is 3.
+    
+    Returns
+    ----
+    Course
+        A complete course object with all components.
+    
+    Examples
+    -----
+    >>> course = create_course_parallel("Raw content about a topic...")
+    >>> print(f"Generated {len(course.chapters)} chapters")
+    
+    >>> course = create_course_parallel(
+    ...     "Extended content...", 
+    ...     max_chapters=20,
+    ...     max_workers=4
+    ... )
+    >>> print(f"Generated {len(course.chapters)} chapters")
+    
+    >>> course = create_course_parallel(
+    ...     "Simple content...", 
+    ...     max_chapters=5, 
+    ...     fixed_chapter_count=True,
+    ...     delay_range=(0.2, 1.0)
+    ... )
+    >>> print(f"Generated {len(course.chapters)} chapters")
+    >>> # Will always print "Generated 5 chapters"
+    """
+    # Import here to avoid circular imports
+    from cascadellm.parallel import parallel_generate_chapters
+    
+    # Initialize the course with the original content
+    course = Course(content=content)
+    
+    # If no LLM is provided, configure Gemini
+    if llm is None:
+        if verbose:
+            print("Configuring default Gemini LLM...")
+        llm = get_default_llm(temperature)
+    
+    # Step 1: Generate the table of contents
+    if verbose:
+        print(f"Generating table of contents (max {max_chapters} chapters)...")
+        if fixed_chapter_count:
+            print(f"Using fixed chapter count mode: exactly {max_chapters} chapters")
+        if custom_prompt:
+            print("Using custom prompt for chapter generation")
+    
+    chapter_titles = generate_toc(
+        content, 
+        llm=llm, 
+        temperature=temperature, 
+        max_chapters=max_chapters,
+        fixed_chapter_count=fixed_chapter_count
+    )
+    
+    if verbose:
+        print(f"Generated {len(chapter_titles)} chapter titles")
+        print(f"Starting parallel generation of chapters with max_workers={max_workers}")
+    
+    # Step 2: Generate content for each chapter in parallel
+    if chapter_titles:
+        chapters = parallel_generate_chapters(
+            chapter_titles=chapter_titles,
+            content=content,
+            llm=llm,
+            temperature=temperature,
+            custom_prompt=custom_prompt,
+            max_workers=max_workers,
+            delay_range=delay_range,
+            max_retries=max_retries
+        )
+        
+        course.chapters = chapters
+        
+        # Step 3: Generate the course summary
+        if verbose:
+            print("Generating course summary...")
+        course.summary = generate_summary(content, chapters, llm=llm, temperature=temperature)
+        if verbose:
+            print("Course generation complete!")
+    
+    return course 
