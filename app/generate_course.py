@@ -491,12 +491,25 @@ def main():
                     custom_prompt=custom_prompt,
                     max_workers=args.max_workers,
                     delay_range=(args.min_delay, args.max_delay),
-                    max_retries=args.max_retries
+                    max_retries=args.max_retries,
+                    course_title=args.title,
+                    output_dir=output_dir
                 )
                 
-                # Save the course files
-                save_course_to_files(args.title, course, output_dir)
+                # Save the course summary (chapters are already saved during generation)
+                # Create the course directory if it doesn't exist
+                safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in args.title)
+                safe_title = safe_title.replace(" ", "_")
+                course_dir = Path(output_dir) / safe_title
+                course_dir.mkdir(parents=True, exist_ok=True)
+                
+                # Save the course summary
+                with open(course_dir / "summary.md", 'w', encoding='utf-8') as f:
+                    f.write(f"# {args.title}\n\n")
+                    f.write(course.summary)
+                
                 logger.info(f"Successfully generated course with {len(course.chapters)} chapters in parallel mode")
+                logger.info(f"Output saved to: {course_dir}")
             except Exception as e:
                 logger.error(f"Parallel course generation failed: {str(e)}", exc_info=True)
                 logger.error("Try running again with sequential mode (without --parallel)")
@@ -515,13 +528,14 @@ def main():
                 custom_prompt=custom_prompt,
                 logger=logger
             )
+            
+            logger.info(f"Course generated with {len(course.chapters)} chapters")
+            logger.info(f"Output saved to: {output_dir}")
         
-        logger.info(f"Course generated with {len(course.chapters)} chapters")
-        logger.info(f"Output saved to: {output_dir}")
         logger.info(f"Log file: {log_file}")
         
         print(f"Course generated with {len(course.chapters)} chapters")
-        print(f"Output saved to: {output_dir}")
+        print(f"Output saved to: {output_dir}/{safe_title if args.parallel else ''}")
         print(f"Log file: {log_file}")
         
     except Exception as e:

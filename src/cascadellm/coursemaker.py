@@ -662,70 +662,49 @@ def create_course_parallel(
     custom_prompt: Optional[str] = None,
     max_workers: Optional[int] = None,
     delay_range: tuple = (0.1, 0.5),
-    max_retries: int = 3
+    max_retries: int = 3,
+    course_title: str = "course",
+    output_dir: str = "output"
 ) -> Course:
     """
-    Create a complete structured course from raw content using parallel processing.
+    Create a course with parallel chapter generation.
     
-    This function orchestrates the course creation process with parallel chapter generation:
-    1. Generate a table of contents
-    2. Create detailed explanations for each chapter in parallel
-    3. Generate a comprehensive course summary
+    This function creates a course by generating chapters in parallel using
+    multiple processes. This can significantly speed up the course generation
+    process, especially for courses with many chapters.
     
     Parameters
-    ----
+    ----------
     content : str
-        The raw content to transform into a course.
-    llm : BaseLanguageModel, optional
-        The language model to use for generation. If None, the function will
-        automatically configure a Gemini model.
+        The raw content to transform into a course
+    llm : Optional[BaseLanguageModel], optional
+        Language model to use. If None, a default model will be configured.
     temperature : float, optional
-        The temperature setting for the LLM, affecting randomness in output.
-        Default is 0.0 (deterministic output).
+        Temperature for generation. Default is 0.0.
     verbose : bool, optional
-        Whether to print progress messages during course generation.
-        Default is False.
+        Whether to print progress messages. Default is False.
     max_chapters : int, optional
-        Maximum number of chapters to generate. Default is 10.
+        Maximum number of chapters. Default is 10.
     fixed_chapter_count : bool, optional
-        If True, generate exactly max_chapters. If False, generate between 1 and max_chapters
-        based on content complexity. Default is False.
+        Whether to use fixed chapter count. Default is False.
     custom_prompt : Optional[str], optional
-        Custom instructions to append to the "系统性讲解" section of each chapter. Default is None.
+        Custom prompt instructions. Default is None.
     max_workers : Optional[int], optional
-        Maximum number of worker processes for parallel chapter generation.
-        If None, uses the default (typically the number of CPU cores).
+        Maximum number of worker processes. If None, uses the default.
     delay_range : tuple, optional
-        Range (min, max) in seconds for the random delay between API requests.
+        Range (min, max) in seconds for the random delay between task submissions.
         Default is (0.1, 0.5).
     max_retries : int, optional
         Maximum number of retry attempts per chapter. Default is 3.
-    
+    course_title : str, optional
+        Title of the course for saving files. Default is "course".
+    output_dir : str, optional
+        Directory to save the chapter files. Default is "output".
+        
     Returns
-    ----
+    -------
     Course
-        A complete course object with all components.
-    
-    Examples
-    -----
-    >>> course = create_course_parallel("Raw content about a topic...")
-    >>> print(f"Generated {len(course.chapters)} chapters")
-    
-    >>> course = create_course_parallel(
-    ...     "Extended content...", 
-    ...     max_chapters=20,
-    ...     max_workers=4
-    ... )
-    >>> print(f"Generated {len(course.chapters)} chapters")
-    
-    >>> course = create_course_parallel(
-    ...     "Simple content...", 
-    ...     max_chapters=5, 
-    ...     fixed_chapter_count=True,
-    ...     delay_range=(0.2, 1.0)
-    ... )
-    >>> print(f"Generated {len(course.chapters)} chapters")
-    >>> # Will always print "Generated 5 chapters"
+        The generated course object
     """
     # Import here to avoid circular imports
     from cascadellm.parallel import parallel_generate_chapters
@@ -757,7 +736,6 @@ def create_course_parallel(
     
     if verbose:
         print(f"Generated {len(chapter_titles)} chapter titles")
-        print(f"Starting parallel generation of chapters with max_workers={max_workers}")
     
     # Step 2: Generate content for each chapter in parallel
     if chapter_titles:
@@ -781,7 +759,9 @@ def create_course_parallel(
             custom_prompt=custom_prompt,
             max_workers=max_workers,
             delay_range=delay_range,
-            max_retries=max_retries
+            max_retries=max_retries,
+            course_title=course_title,
+            output_dir=output_dir
         )
         
         course.chapters = chapters

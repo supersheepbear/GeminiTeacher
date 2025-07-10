@@ -5,7 +5,7 @@ import logging
 import os
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
-from typing import List, Optional, Callable, Any, TypeVar, Dict
+from typing import List, Optional, Callable, Any, TypeVar, Dict, Tuple
 
 from langchain_core.language_models import BaseLanguageModel
 
@@ -284,6 +284,130 @@ def _worker_generate_chapter(
         )
 
 
+def save_chapter_to_file(course_title: str, chapter: ChapterContent, chapter_index: int, output_dir: str) -> str:
+    """
+    Save a single chapter to a file.
+    
+    Parameters
+    ----------
+    course_title : str
+        Title of the course
+    chapter : ChapterContent
+        Chapter content object
+    chapter_index : int
+        Index of the chapter (0-based)
+    output_dir : str
+        Directory to save the chapter file
+        
+    Returns
+    -------
+    str
+        Path to the saved chapter file
+    """
+    import os
+    from pathlib import Path
+    
+    # Create output directory if it doesn't exist
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    
+    # Create course-specific directory
+    safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in course_title)
+    safe_title = safe_title.replace(" ", "_")
+    course_dir = output_path / safe_title
+    course_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Sanitize chapter title for filename
+    chapter_title_safe = "".join(c if c.isalnum() or c in " -_" else "_" for c in chapter.title)
+    chapter_title_safe = chapter_title_safe.replace(" ", "_")
+    
+    # Create chapter filename with chapter number and title
+    chapter_filename = f"chapter_{chapter_index+1:02d}_{chapter_title_safe}.md"
+    chapter_path = course_dir / chapter_filename
+    
+    # Save chapter content
+    with open(chapter_path, 'w', encoding='utf-8') as f:
+        f.write(f"# {chapter.title}\n\n")
+        f.write("## Summary\n\n")
+        f.write(f"{chapter.summary}\n\n")
+        f.write("## Explanation\n\n")
+        f.write(f"{chapter.explanation}\n\n")
+        f.write("## Extension\n\n")
+        f.write(f"{chapter.extension}\n")
+    
+    return str(chapter_path)
+
+
+def _worker_generate_and_save_chapter(
+    chapter_item: tuple,
+    content: str,
+    course_title: str,
+    output_dir: str,
+    api_key: Optional[str] = None,
+    model_name: str = "gemini-1.5-pro",
+    temperature: float = 0.0,
+    custom_prompt: Optional[str] = None,
+    max_retries: int = 3,
+    retry_delay: float = 1.0
+) -> Tuple[int, ChapterContent, str]:
+    """
+    Worker function to generate a chapter and save it to disk.
+    
+    Parameters
+    ----------
+    chapter_item : tuple
+        Tuple containing (index, chapter_title)
+    content : str
+        The raw content to use for generating the chapter.
+    course_title : str
+        Title of the course
+    output_dir : str
+        Directory to save the chapter file
+    api_key : Optional[str], optional
+        The Google API key for LLM access. If None, uses environment variable.
+    model_name : str, optional
+        The name of the LLM model to use. Default is "gemini-1.5-pro".
+    temperature : float, optional
+        The temperature setting for generation. Default is 0.0.
+    custom_prompt : Optional[str], optional
+        Custom instructions to append to the chapter generation prompt.
+    max_retries : int, optional
+        Maximum number of retry attempts. Default is 3.
+    retry_delay : float, optional
+        Base delay between retries in seconds. Default is 1.0.
+        
+    Returns
+    -------
+    Tuple[int, ChapterContent, str]
+        Tuple containing (chapter_index, chapter_content, file_path)
+    """
+    logger = _configure_worker_logger()
+    
+    # Unpack the chapter item
+    idx, chapter_title = chapter_item
+    
+    # Generate the chapter
+    chapter = _worker_generate_chapter(
+        chapter_item,
+        content,
+        api_key=api_key,
+        model_name=model_name,
+        temperature=temperature,
+        custom_prompt=custom_prompt,
+        max_retries=max_retries,
+        retry_delay=retry_delay
+    )
+    
+    # Save the chapter to disk
+    try:
+        file_path = save_chapter_to_file(course_title, chapter, idx, output_dir)
+        logger.info(f"Saved chapter {idx+1}: '{chapter_title}' to {file_path}")
+        return (idx, chapter, file_path)
+    except Exception as e:
+        logger.error(f"Failed to save chapter {idx+1}: '{chapter_title}' - Error: {str(e)}")
+        return (idx, chapter, "")
+
+
 def parallel_generate_chapters(
     chapter_titles: List[str],
     content: str,
@@ -292,13 +416,16 @@ def parallel_generate_chapters(
     custom_prompt: Optional[str] = None,
     max_workers: Optional[int] = None,
     delay_range: tuple = (0.1, 0.5),
-    max_retries: int = 3
+    max_retries: int = 3,
+    course_title: str = "course",
+    output_dir: str = "output"
 ) -> List[ChapterContent]:
     """
     Generate multiple chapters in parallel with retry logic and rate limiting.
     
     This function orchestrates the parallel generation of multiple chapters,
-    handling API rate limits and retrying failed requests.
+    handling API rate limits and retrying failed requests. Each chapter is
+    saved to disk as soon as it's generated.
     
     Parameters
     ----------
@@ -319,6 +446,10 @@ def parallel_generate_chapters(
         Default is (0.1, 0.5).
     max_retries : int, optional
         Maximum number of retry attempts per chapter. Default is 3.
+    course_title : str, optional
+        Title of the course for saving files. Default is "course".
+    output_dir : str, optional
+        Directory to save the chapter files. Default is "output".
         
     Returns
     -------
@@ -346,15 +477,18 @@ def parallel_generate_chapters(
     indexed_titles = list(enumerate(chapter_titles))
     
     logger.info(f"Using delay range: {delay_range[0]}-{delay_range[1]}s between tasks")
+    logger.info(f"Saving chapters progressively to {output_dir}/{course_title}/")
     
-    # Generate chapters in parallel with delay between submissions
+    # Generate chapters in parallel with delay between submissions and save each one as it completes
     try:
-        chapters = parallel_map_with_delay(
-            _worker_generate_chapter,
+        results = parallel_map_with_delay(
+            _worker_generate_and_save_chapter,
             indexed_titles,
             max_workers=max_workers,
             delay_range=delay_range,
             content=content,
+            course_title=course_title,
+            output_dir=output_dir,
             api_key=api_key,
             model_name=model_name,
             temperature=temperature,
@@ -363,12 +497,12 @@ def parallel_generate_chapters(
             retry_delay=1.0
         )
         
-        # Sort the chapters based on their original index if needed
-        # (should already be in order due to how parallel_map_with_delay works)
+        # Extract just the chapter content from the results (idx, chapter, file_path)
+        chapters = [result[1] for result in results]
         
         logger.info(f"Completed parallel generation of {len(chapters)} chapters")
         return chapters
-    
+        
     except Exception as e:
         logger.error(f"Parallel chapter generation failed with error: {str(e)}")
         # Return any chapters we've generated so far, or an empty list
