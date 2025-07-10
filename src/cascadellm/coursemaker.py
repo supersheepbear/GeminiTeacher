@@ -761,10 +761,22 @@ def create_course_parallel(
     
     # Step 2: Generate content for each chapter in parallel
     if chapter_titles:
+        # Get API key from the LLM if it's a ChatGoogleGenerativeAI instance
+        api_key = None
+        model_name = "gemini-1.5-pro"
+        
+        if llm is not None:
+            try:
+                # Try to extract API key from the LLM instance
+                api_key = getattr(llm, "google_api_key", None)
+                model_name = getattr(llm, "model", model_name)
+            except Exception:
+                pass
+        
         chapters = parallel_generate_chapters(
             chapter_titles=chapter_titles,
             content=content,
-            llm=llm,
+            llm=llm,  # This will be used to extract API key and model if possible, but not passed to worker processes
             temperature=temperature,
             custom_prompt=custom_prompt,
             max_workers=max_workers,

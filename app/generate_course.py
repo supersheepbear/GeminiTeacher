@@ -19,6 +19,62 @@ from cascadellm.coursemaker import create_course, configure_gemini_llm
 from cascadellm.converter import convert_to_markdown
 
 
+def configure_logging(log_file=None, verbose=False):
+    """
+    Configure logging for the application.
+    
+    Parameters
+    ----------
+    log_file : str, optional
+        Path to the log file
+    verbose : bool, optional
+        Whether to use verbose (DEBUG) logging
+    
+    Returns
+    -------
+    logging.Logger
+        Configured logger instance
+    """
+    log_level = logging.DEBUG if verbose else logging.INFO
+    
+    # Configure root logger
+    logging.basicConfig(
+        level=log_level,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler()  # Console handler
+        ]
+    )
+    
+    # Create a logger for this application
+    logger = logging.getLogger("generate_course")
+    
+    # Add file handler if log_file is provided
+    if log_file:
+        log_dir = os.path.dirname(log_file)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
+            
+        file_handler = logging.FileHandler(log_file)
+        file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        file_handler.setFormatter(file_formatter)
+        file_handler.setLevel(log_level)
+        
+        # Add the file handler to the logger
+        logger.addHandler(file_handler)
+        
+        # Also add the file handler to the cascadellm loggers
+        for module in ["cascadellm", "cascadellm.coursemaker", "cascadellm.parallel"]:
+            module_logger = logging.getLogger(module)
+            module_logger.addHandler(file_handler)
+            module_logger.setLevel(log_level)
+    
+    # Set environment variable with log level for worker processes
+    os.environ["CASCADELLM_LOG_LEVEL"] = str(log_level)
+    
+    return logger
+
+
 def load_config(config_path: str) -> Dict[str, Any]:
     """
     Load configuration from a YAML file.
@@ -348,15 +404,8 @@ def main():
     
     # Set up logging
     log_file = args.log_file if args.log_file else os.path.join(output_dir, f"generation_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
-    logging.basicConfig(
-        level=logging.INFO if args.verbose else logging.WARNING,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler()
-        ]
-    )
-    logger = logging.getLogger("generate_course")
+    logger = configure_logging(log_file, args.verbose)
+    
     logger.info(f"Starting course generation with config: {config_path}")
     logger.info(f"Input file: {args.input}")
     logger.info(f"Mode: {'Fixed' if args.fixed_chapters else 'Adaptive'} chapter count (max: {args.max_chapters})")
@@ -431,21 +480,27 @@ def main():
             # Use parallel processing for chapter generation
             from cascadellm.coursemaker import create_course_parallel
             
-            course = create_course_parallel(
-                content, 
-                llm=llm, 
-                temperature=temperature,
-                verbose=args.verbose,
-                max_chapters=args.max_chapters,
-                fixed_chapter_count=args.fixed_chapters,
-                custom_prompt=custom_prompt,
-                max_workers=args.max_workers,
-                delay_range=(args.min_delay, args.max_delay),
-                max_retries=args.max_retries
-            )
-            
-            # Save the course files
-            save_course_to_files(args.title, course, output_dir)
+            try:
+                course = create_course_parallel(
+                    content, 
+                    llm=llm, 
+                    temperature=temperature,
+                    verbose=args.verbose,
+                    max_chapters=args.max_chapters,
+                    fixed_chapter_count=args.fixed_chapters,
+                    custom_prompt=custom_prompt,
+                    max_workers=args.max_workers,
+                    delay_range=(args.min_delay, args.max_delay),
+                    max_retries=args.max_retries
+                )
+                
+                # Save the course files
+                save_course_to_files(args.title, course, output_dir)
+                logger.info(f"Successfully generated course with {len(course.chapters)} chapters in parallel mode")
+            except Exception as e:
+                logger.error(f"Parallel course generation failed: {str(e)}", exc_info=True)
+                logger.error("Try running again with sequential mode (without --parallel)")
+                sys.exit(1)
         else:
             # Use the progressive save version instead of the original create_course
             course = create_course_with_progressive_save(
@@ -460,6 +515,10 @@ def main():
                 custom_prompt=custom_prompt,
                 logger=logger
             )
+        
+        logger.info(f"Course generated with {len(course.chapters)} chapters")
+        logger.info(f"Output saved to: {output_dir}")
+        logger.info(f"Log file: {log_file}")
         
         print(f"Course generated with {len(course.chapters)} chapters")
         print(f"Output saved to: {output_dir}")

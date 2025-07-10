@@ -2,6 +2,8 @@
 import random
 import time
 import logging
+import os
+import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
 from typing import List, Optional, Callable, Any, TypeVar, Dict
 
@@ -11,6 +13,25 @@ from cascadellm.coursemaker import ChapterContent, generate_chapter
 
 # Type variable for generic return type
 T = TypeVar('T')
+
+# Set up a process-safe logger configuration
+def _configure_worker_logger():
+    """Configure a logger for worker processes."""
+    logger = logging.getLogger("cascadellm.parallel")
+    # Check if handlers are already configured to avoid duplicate logs
+    if not logger.handlers:
+        # Get the log level from the parent process if possible
+        log_level = os.environ.get("CASCADELLM_LOG_LEVEL", "INFO")
+        numeric_level = getattr(logging, log_level.upper(), logging.INFO)
+        logger.setLevel(numeric_level)
+        
+        # Create a handler that writes to stderr
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s - %(processName)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    
+    return logger
 
 def generate_chapter_with_retry(
     chapter_title: str, 
@@ -58,6 +79,7 @@ def generate_chapter_with_retry(
     
     for attempt in range(max_retries + 1):
         try:
+            logger.info(f"Generating chapter '{chapter_title}' (attempt {attempt + 1}/{max_retries + 1})")
             chapter = generate_chapter(
                 chapter_title=chapter_title,
                 content=content,
@@ -68,6 +90,7 @@ def generate_chapter_with_retry(
             
             # Check if we got a valid response (non-empty explanation)
             if chapter.explanation.strip():
+                logger.info(f"Successfully generated chapter '{chapter_title}' (length: {len(chapter.explanation)} chars)")
                 return chapter
             else:
                 raise ValueError("Empty chapter explanation received")
@@ -141,25 +164,124 @@ def parallel_map_with_delay(
     """
     logger = logging.getLogger("cascadellm.parallel")
     results = []
+    total_items = len(items)
+    
+    # Export the current log level to the environment for worker processes
+    os.environ["CASCADELLM_LOG_LEVEL"] = logger.getEffectiveLevel().__str__()
     
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         # Submit all tasks with a delay between submissions
         futures = []
-        for item in items:
+        for i, item in enumerate(items):
             # Add a small random delay to avoid overwhelming the API
             delay = random.uniform(delay_range[0], delay_range[1])
-            logger.debug(f"Submitting task with delay: {delay:.2f}s")
+            logger.debug(f"Submitting task {i+1}/{total_items} with delay: {delay:.2f}s")
             time.sleep(delay)
             
             # Submit the task to the process pool
             future = executor.submit(func, item, **kwargs)
             futures.append(future)
+            logger.info(f"Submitted task {i+1}/{total_items}")
         
         # Collect results in the original order
-        for future in futures:
-            results.append(future.result())
+        for i, future in enumerate(futures):
+            try:
+                logger.info(f"Waiting for task {i+1}/{total_items} to complete")
+                result = future.result()
+                results.append(result)
+                logger.info(f"Completed task {i+1}/{total_items}")
+            except Exception as e:
+                logger.error(f"Task {i+1}/{total_items} failed: {str(e)}")
+                # Re-raise the exception to maintain the expected behavior
+                raise
     
     return results
+
+
+def _worker_generate_chapter(
+    chapter_item: tuple,
+    content: str,
+    api_key: Optional[str] = None,
+    model_name: str = "gemini-1.5-pro",
+    temperature: float = 0.0,
+    custom_prompt: Optional[str] = None,
+    max_retries: int = 3,
+    retry_delay: float = 1.0
+) -> ChapterContent:
+    """
+    Worker function to generate a chapter with its own LLM instance.
+    
+    This function initializes a new LLM instance within the worker process,
+    avoiding the need to pickle and pass LLM objects between processes.
+    
+    Parameters
+    ----------
+    chapter_item : tuple
+        Tuple containing (index, chapter_title)
+    content : str
+        The raw content to use for generating the chapter.
+    api_key : Optional[str], optional
+        The Google API key for LLM access. If None, uses environment variable.
+    model_name : str, optional
+        The name of the LLM model to use. Default is "gemini-1.5-pro".
+    temperature : float, optional
+        The temperature setting for generation. Default is 0.0.
+    custom_prompt : Optional[str], optional
+        Custom instructions to append to the chapter generation prompt.
+    max_retries : int, optional
+        Maximum number of retry attempts. Default is 3.
+    retry_delay : float, optional
+        Base delay between retries in seconds. Default is 1.0.
+        
+    Returns
+    -------
+    ChapterContent
+        The generated chapter content.
+    """
+    # Configure a process-specific logger
+    logger = _configure_worker_logger()
+    
+    # Unpack the chapter item
+    idx, chapter_title = chapter_item
+    
+    logger.info(f"Worker process starting on chapter {idx+1}: '{chapter_title}'")
+    
+    try:
+        # Import here to avoid circular imports and ensure imports happen in the worker process
+        from cascadellm.coursemaker import configure_gemini_llm
+        
+        # Initialize a new LLM instance within this worker process
+        logger.info(f"Configuring LLM for chapter {idx+1}: '{chapter_title}'")
+        llm = configure_gemini_llm(
+            api_key=api_key,
+            model_name=model_name,
+            temperature=temperature
+        )
+        
+        # Generate the chapter with retry logic
+        logger.info(f"Starting generation of chapter {idx+1}: '{chapter_title}'")
+        chapter = generate_chapter_with_retry(
+            chapter_title=chapter_title,
+            content=content,
+            llm=llm,
+            temperature=temperature,
+            custom_prompt=custom_prompt,
+            max_retries=max_retries,
+            retry_delay=retry_delay
+        )
+        
+        logger.info(f"Completed generation of chapter {idx+1}: '{chapter_title}'")
+        return chapter
+    
+    except Exception as e:
+        logger.error(f"Failed to generate chapter {idx+1}: '{chapter_title}' - Error: {str(e)}")
+        # Return a basic error chapter rather than propagating the exception
+        return ChapterContent(
+            title=chapter_title,
+            summary=f"Error: Failed to generate chapter {idx+1}",
+            explanation=f"The chapter generation process encountered an error: {str(e)}",
+            extension="Please try regenerating this chapter or check your API configuration."
+        )
 
 
 def parallel_generate_chapters(
@@ -204,25 +326,50 @@ def parallel_generate_chapters(
         List of generated chapter contents in the same order as the input titles.
     """
     logger = logging.getLogger("cascadellm.parallel")
-    logger.info(f"Starting parallel generation of {len(chapter_titles)} chapters")
+    logger.info(f"Starting parallel generation of {len(chapter_titles)} chapters with {max_workers or multiprocessing.cpu_count()} workers")
     
-    # Prepare the kwargs to pass to generate_chapter_with_retry
-    kwargs = {
-        "content": content,
-        "llm": llm,
-        "temperature": temperature,
-        "custom_prompt": custom_prompt,
-        "max_retries": max_retries
-    }
+    # Get API key from the LLM if provided or environment
+    api_key = None
+    model_name = "gemini-1.5-pro"
+    
+    if llm is not None:
+        # Try to extract API key and model name from the provided LLM
+        try:
+            # This assumes LLM is a ChatGoogleGenerativeAI instance
+            api_key = getattr(llm, "google_api_key", None)
+            model_name = getattr(llm, "model", model_name)
+            logger.info(f"Using model: {model_name}")
+        except Exception:
+            logger.warning("Could not extract API key from provided LLM, will use environment variables")
+    
+    # Create a list of (index, chapter_title) tuples to preserve order
+    indexed_titles = list(enumerate(chapter_titles))
+    
+    logger.info(f"Using delay range: {delay_range[0]}-{delay_range[1]}s between tasks")
     
     # Generate chapters in parallel with delay between submissions
-    chapters = parallel_map_with_delay(
-        generate_chapter_with_retry,
-        chapter_titles,
-        max_workers=max_workers,
-        delay_range=delay_range,
-        **kwargs
-    )
+    try:
+        chapters = parallel_map_with_delay(
+            _worker_generate_chapter,
+            indexed_titles,
+            max_workers=max_workers,
+            delay_range=delay_range,
+            content=content,
+            api_key=api_key,
+            model_name=model_name,
+            temperature=temperature,
+            custom_prompt=custom_prompt,
+            max_retries=max_retries,
+            retry_delay=1.0
+        )
+        
+        # Sort the chapters based on their original index if needed
+        # (should already be in order due to how parallel_map_with_delay works)
+        
+        logger.info(f"Completed parallel generation of {len(chapters)} chapters")
+        return chapters
     
-    logger.info(f"Completed parallel generation of {len(chapters)} chapters")
-    return chapters 
+    except Exception as e:
+        logger.error(f"Parallel chapter generation failed with error: {str(e)}")
+        # Return any chapters we've generated so far, or an empty list
+        return [] 

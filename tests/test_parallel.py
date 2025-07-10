@@ -5,7 +5,8 @@ import pytest
 from cascadellm.parallel import (
     generate_chapter_with_retry,
     parallel_map_with_delay,
-    parallel_generate_chapters
+    parallel_generate_chapters,
+    _worker_generate_chapter
 )
 from cascadellm.coursemaker import ChapterContent
 
@@ -186,6 +187,8 @@ def test_parallel_generate_chapters(mock_parallel_map_with_delay):
     chapter_titles = ["Chapter 1", "Chapter 2"]
     content = "Test content"
     mock_llm = MagicMock()
+    mock_llm.google_api_key = "fake_api_key"
+    mock_llm.model = "gemini-1.5-pro"
     
     # Act
     result = parallel_generate_chapters(
@@ -201,55 +204,83 @@ def test_parallel_generate_chapters(mock_parallel_map_with_delay):
     
     # Assert
     assert result == mock_chapters
-    mock_parallel_map_with_delay.assert_called_once_with(
-        generate_chapter_with_retry,
-        chapter_titles,
-        max_workers=2,
-        delay_range=(0.2, 0.3),
-        content=content,
-        llm=mock_llm,
-        temperature=0.5,
-        custom_prompt="Custom prompt",
-        max_retries=2
-    )
+    
+    # Check that parallel_map_with_delay was called with the correct parameters
+    # We need to check that it's called with _worker_generate_chapter and tuples of (index, title)
+    mock_parallel_map_with_delay.assert_called_once()
+    
+    # Get the actual call arguments
+    call_args = mock_parallel_map_with_delay.call_args
+    
+    # Check the function argument (should be _worker_generate_chapter)
+    assert call_args[0][0] == _worker_generate_chapter
+    
+    # Check the items argument (should be list of (index, title) tuples)
+    items_arg = call_args[0][1]
+    assert isinstance(items_arg, list)
+    assert len(items_arg) == 2
+    assert items_arg[0] == (0, "Chapter 1")
+    assert items_arg[1] == (1, "Chapter 2")
+    
+    # Check the keyword arguments
+    assert call_args[1]['max_workers'] == 2
+    assert call_args[1]['delay_range'] == (0.2, 0.3)
+    assert call_args[1]['content'] == content
+    assert call_args[1]['api_key'] == "fake_api_key"
+    assert call_args[1]['model_name'] == "gemini-1.5-pro"
+    assert call_args[1]['temperature'] == 0.5
+    assert call_args[1]['custom_prompt'] == "Custom prompt"
+    assert call_args[1]['max_retries'] == 2
 
 
+@patch('cascadellm.coursemaker.configure_gemini_llm')
 @patch('cascadellm.parallel.generate_chapter_with_retry')
-@patch('cascadellm.parallel.ProcessPoolExecutor')
-@patch('cascadellm.parallel.time.sleep')
-def test_parallel_generate_chapters_integration(mock_sleep, mock_process_pool_executor, mock_generate_chapter_with_retry):
-    """Test the integration of parallel_generate_chapters with ProcessPoolExecutor."""
+def test_worker_generate_chapter(mock_generate_chapter_with_retry, mock_configure_gemini_llm):
+    """Test that _worker_generate_chapter correctly initializes an LLM and generates a chapter."""
     # Arrange
-    mock_executor = MagicMock()
-    mock_process_pool_executor.return_value.__enter__.return_value = mock_executor
+    mock_llm = MagicMock()
+    mock_configure_gemini_llm.return_value = mock_llm
     
-    # Set up mock futures
-    mock_futures = []
-    mock_chapters = [
-        ChapterContent(title="Chapter 1", summary="Summary 1"),
-        ChapterContent(title="Chapter 2", summary="Summary 2")
-    ]
+    mock_chapter = ChapterContent(
+        title="Test Chapter",
+        summary="Test summary",
+        explanation="Good explanation",
+        extension="Test extension"
+    )
+    mock_generate_chapter_with_retry.return_value = mock_chapter
     
-    for chapter in mock_chapters:
-        mock_future = MagicMock()
-        mock_future.result.return_value = chapter
-        mock_futures.append(mock_future)
-    
-    mock_executor.submit.side_effect = mock_futures
-    
-    chapter_titles = ["Chapter 1", "Chapter 2"]
+    chapter_item = (0, "Test Chapter")
     content = "Test content"
     
     # Act
-    result = parallel_generate_chapters(
-        chapter_titles=chapter_titles,
+    result = _worker_generate_chapter(
+        chapter_item=chapter_item,
         content=content,
-        max_workers=2
+        api_key="test_api_key",
+        model_name="test-model",
+        temperature=0.7,
+        custom_prompt="Test prompt",
+        max_retries=2,
+        retry_delay=0.5
     )
     
     # Assert
-    assert len(result) == 2
-    assert result[0].title == "Chapter 1"
-    assert result[1].title == "Chapter 2"
-    assert mock_executor.submit.call_count == 2
-    assert mock_sleep.call_count == 2  # Should sleep before each submission 
+    assert result == mock_chapter
+    
+    # Check that LLM was configured correctly
+    mock_configure_gemini_llm.assert_called_once_with(
+        api_key="test_api_key",
+        model_name="test-model",
+        temperature=0.7
+    )
+    
+    # Check that generate_chapter_with_retry was called correctly
+    mock_generate_chapter_with_retry.assert_called_once_with(
+        chapter_title="Test Chapter",
+        content=content,
+        llm=mock_llm,
+        temperature=0.7,
+        custom_prompt="Test prompt",
+        max_retries=2,
+        retry_delay=0.5
+    ) 
