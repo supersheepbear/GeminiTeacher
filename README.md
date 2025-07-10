@@ -5,181 +5,75 @@
 [![codecov](https://codecov.io/gh/supersheepbear/GeminiTeacher/branch/main/graph/badge.svg)](https://codecov.io/gh/supersheepbear/GeminiTeacher)
 [![License](https://img.shields.io/github/license/supersheepbear/GeminiTeacher)](https://img.shields.io/github/license/supersheepbear/GeminiTeacher)
 
-**GeminiTeacher** is an educational content generation toolkit powered by Google's Gemini LLM. It transforms raw text content into structured, well-organized educational courses with minimal effort. Perfect for educators, content creators, and anyone looking to quickly create high-quality learning materials.
+**GeminiTeacher** is an AI-powered course creation toolkit using Google's Gemini LLM. It transforms raw text, markdown, or documents into structured, lesson-based educational content. Ideal for educators, developers, and content creators.
 
-- **Documentation**: [https://supersheepbear.github.io/GeminiTeacher/](https://supersheepbear.github.io/GeminiTeacher/)
+- **Full Documentation**: [https://supersheepbear.github.io/GeminiTeacher/](https://supersheepbear.github.io/GeminiTeacher/)
 - **Source Code**: [https://github.com/supersheepbear/GeminiTeacher/](https://github.com/supersheepbear/GeminiTeacher/)
 
-## Installation
+## Quick Start
 
-Install GeminiTeacher directly from PyPI:
+The best way to use GeminiTeacher is with the command-line interface and a `config.yaml` file.
 
-```bash
-pip install geminiteacher
-```
+### 1. Installation
 
-You'll need a Google API key with access to Gemini models. Set it as an environment variable:
+First, install the package and set up your API key by following the [**Installation and Setup Guide**](./docs/installation.md).
 
-```bash
-# For Linux/macOS
-export GOOGLE_API_KEY="your-api-key-here"
+### 2. Create Your Content
 
-# For Windows (Command Prompt)
-set GOOGLE_API_KEY=your-api-key-here
+Create a text file with the raw material for your course. For example, `my_notes.txt`.
 
-# For Windows (PowerShell)
-$env:GOOGLE_API_KEY="your-api-key-here"
-```
-
-## Command-line Usage
-
-After installation, you can immediately use the `geminiteacher` command-line tool:
-
-```bash
-# Basic usage with a text file
-geminiteacher --input content.txt --output-dir courses --title "Machine Learning Basics"
-
-# Enable parallel processing for faster generation
-geminiteacher --input content.txt --parallel --max-workers 4
-
-# Use a configuration file for more control
-geminiteacher --config config.yaml
-```
-
-### Configuration File
-
-Create a `config.yaml` file for more control over the generation process:
-
-```yaml
-# API Configuration
-api:
-  google_api_key: "your_gemini_api_key_here"  # Or use environment variable
-  model_name: "gemini-1.5-pro"
-
-# Input/Output Settings
-input:
-  path: "input/content.txt"  # Path to your content file
-
-output:
-  directory: "output"        # Where to save generated files
-
-# Course Settings
-course:
-  title: "Machine Learning"  # Title of your course
-  custom_prompt: "custom_instructions.txt"  # Optional custom prompt
-
-# Generation Settings
-generation:
-  temperature: 0.2          # Controls randomness (0.0-1.0)
-  max_chapters: 10          # Maximum number of chapters
-  fixed_chapter_count: false # Generate exactly max_chapters?
-
-# Parallel Processing Settings
-parallel:
-  enabled: true             # Use parallel processing?
-  max_workers: 4            # Number of parallel workers
-  delay_min: 0.2            # Min delay between API calls (seconds)
-  delay_max: 0.8            # Max delay between API calls (seconds)
-  max_retries: 3            # Max retry attempts for failed requests
-```
-
-For more details on command-line usage, see the [CLI Application documentation](https://supersheepbear.github.io/GeminiTeacher/app/).
-
-## Python API Usage
-
-Generate a complete course with just a few lines of code:
-
-```python
-import geminiteacher as gt
-
-# Your raw content to transform into a course
-content = """
+```text
+// my_notes.txt
 Machine learning is a subfield of artificial intelligence that focuses on developing 
 systems that can learn from and make decisions based on data. Unlike traditional 
 programming where explicit instructions are provided, machine learning algorithms 
 build models based on sample data to make predictions or decisions without being 
-explicitly programmed to do so.
-"""
-
-# Generate a course with parallel processing for speed
-course = gt.create_course_parallel(
-    content=content,
-    max_chapters=5,          # Maximum number of chapters to generate
-    fixed_chapter_count=True,  # Generate exactly 5 chapters
-    temperature=0.2,         # Control creativity (0.0-1.0)
-    verbose=True             # Show progress messages
-)
-
-# Print the generated course structure
-print(f"Course Summary: {course.summary}\n")
-print(f"Generated {len(course.chapters)} chapters:")
-for i, chapter in enumerate(course.chapters):
-    print(f"  {i+1}. {chapter.title}")
+explicitly programmed to do so. Supervised learning involves labeled data, while
+unsupervised learning deals with unlabeled data. Reinforcement learning is about
+agents taking actions in an environment to maximize cumulative reward.
 ```
 
-### Using the App Module Programmatically
+### 3. Create a Configuration File
 
-For more control and features like progressive saving:
+Next, create a `config.yaml` to define how you want your course to be generated.
 
-```python
-from geminiteacher.app import create_course_with_progressive_save, configure_logging
-
-# Configure logging
-logger = configure_logging(log_file="generation.log", verbose=True)
-
-# Generate a course with progressive saving
-course = create_course_with_progressive_save(
-    content="Your content here...",
-    course_title="Python Programming",
-    output_dir="courses",
-    temperature=0.2,
-    max_chapters=5,
-    custom_prompt="Focus on practical examples",
-    verbose=True,
-    logger=logger
-)
+```yaml
+# config.yaml
+input:
+  path: "my_notes.txt"
+output:
+  directory: "output/machine_learning_course"
+course:
+  title: "Introduction to Machine Learning"
+generation:
+  max_chapters: 5
+  fixed_chapter_count: true
+parallel:
+  enabled: true
 ```
+
+### 4. Run the Generator
+
+Now, run the command from your terminal:
+
+```bash
+geminiteacher --config config.yaml
+```
+
+The tool will create the specified output directory and fill it with structured markdown files for each chapter and a course summary.
 
 ## Key Features
 
-- **Command-line Interface**: Generate courses without writing any code
-- **Intelligent Content Organization**: Automatically structures content into logical chapters
-- **Adaptive or Fixed Chapter Generation**: Let the AI determine the optimal number of chapters or specify exactly how many you want
-- **Parallel Processing**: Generate chapters concurrently for significantly faster course creation
-- **Custom Prompting**: Tailor the generation process with custom instructions
-- **Progressive Saving**: Each chapter is saved as it's generated, ensuring no work is lost
-- **Robust Error Handling**: Automatic retries with exponential backoff for API failures
+- **Automated Course Structuring**: Intelligently organizes raw text into logical, lesson-based chapters.
+- **Config-Driven Workflow**: Use a simple YAML file to control all aspects of course generation.
+- **Parallel Processing**: Generates chapters concurrently to dramatically reduce creation time.
+- **CLI & Python API**: Use the powerful command-line tool for no-code generation or the Python API for programmatic control.
+- **Customizable AI Behavior**: Use custom prompts and temperature controls to tailor the output to your needs.
+- **Robust and Reliable**: Includes progressive saving and automatic retries for network errors.
 
-## Advanced Usage
+## Learn More
 
-### Custom Prompts
-
-Add specific instructions to guide the content generation:
-
-```python
-custom_prompt = "Focus on practical examples and include code snippets where relevant."
-
-course = gt.create_course(
-    content=content,
-    custom_prompt=custom_prompt,
-    temperature=0.3
-)
-```
-
-### Parallel Processing with Custom Settings
-
-Fine-tune the parallel processing behavior:
-
-```python
-course = gt.create_course_parallel(
-    content=content,
-    max_workers=4,              # Number of parallel workers
-    delay_range=(0.2, 0.8),     # Random delay between API calls (seconds)
-    max_retries=5,              # Maximum retry attempts for failed requests
-    course_title="ML_Basics",   # Title for saved course files
-    output_dir="courses"        # Directory to save generated chapters
-)
-```
+For more advanced CLI options, programmatic Python API usage, and troubleshooting, please see the full [**Usage Guide**](./docs/usage.md).
 
 ## Contributing
 
@@ -188,7 +82,3 @@ Contributions are welcome! Please check out our [contribution guidelines](CONTRI
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-Built with ❤️ using Google Gemini and LangChain.

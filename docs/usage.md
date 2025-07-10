@@ -1,343 +1,193 @@
 # Usage Guide
 
-GeminiTeacher provides powerful tools for automatically generating structured educational courses from raw text content. This guide will walk you through the installation, setup, and various ways to use the package.
+This guide covers the primary ways to use GeminiTeacher, from the simple command-line interface (CLI) to the flexible Python API.
 
-## Overview
+For setup instructions, please see the [**Installation and Setup**](installation.md) guide first.
 
-The course generation process follows a four-phase pipeline:
+## Command-Line Usage (Recommended)
 
-1. **Table of Contents Generation**: The system analyzes the input content and creates a logical structure with chapter titles.
-2. **Chapter Generation**: Detailed explanations are created for each chapter with a consistent structure.
-3. **Summary Generation**: A comprehensive course summary ties everything together.
-4. **File Saving**: When using parallel processing, chapters are saved to disk as they're generated.
+The easiest and most powerful way to use GeminiTeacher is through its command-line interface, which is ideal for generating courses without writing any code. We recommend using a configuration file for the best experience.
 
-All generated content follows a structured format designed for educational purposes.
+### Method 1: Using a `config.yaml` File (Best Practice)
 
-## Installation
+Create a `config.yaml` file to manage all your settings in one place. This is the most organized and repeatable way to generate courses.
 
-Install GeminiTeacher directly from PyPI:
+1.  **Create a `config.yaml` file:**
+
+    ```yaml
+    # config.yaml
+
+    # --- Input/Output Settings ---
+    input:
+      # Path to your raw content file (e.g., a text file with your notes).
+      path: "input/content.txt"
+    output:
+      # Directory where the generated course files will be saved.
+      directory: "output/MyFirstCourse"
+
+    # --- Course Settings ---
+    course:
+      # The title of your course.
+      title: "Introduction to Artificial Intelligence"
+      # Optional: Path to a file with custom instructions for the AI.
+      custom_prompt: "prompts/formal_tone_prompt.txt"
+
+    # --- Generation Settings ---
+    generation:
+      # Controls the "creativity" of the AI. Lower is more predictable. (0.0-1.0)
+      temperature: 0.2
+      # The target number of chapters for the course.
+      max_chapters: 8
+      # If true, the AI will generate exactly `max_chapters`.
+      fixed_chapter_count: true
+
+    # --- Performance Settings ---
+    parallel:
+      # Enable parallel processing to generate chapters simultaneously for speed.
+      enabled: true
+      # Number of parallel processes to run. Defaults to your CPU count.
+      max_workers: 4
+    ```
+
+2.  **Run the command:**
+
+    Simply point the CLI to your configuration file.
+
+    ```bash
+    geminiteacher --config config.yaml
+    ```
+
+### Method 2: Using Command-Line Flags
+
+You can also control the generation process directly with command-line arguments. These are useful for quick, one-off tasks.
 
 ```bash
-pip install geminiteacher
-```
-
-## Setting Up Google Gemini API
-
-GeminiTeacher uses Google's Gemini API for all LLM operations:
-
-1. Make sure you have the package installed:
-
-```bash
-pip install geminiteacher
-```
-
-2. Set up your Gemini API key as an environment variable:
-
-```bash
-# On Linux/macOS
-export GOOGLE_API_KEY=your_gemini_api_key_here
-
-# On Windows PowerShell
-$env:GOOGLE_API_KEY = "your_gemini_api_key_here"
-
-# On Windows Command Prompt
-set GOOGLE_API_KEY=your_gemini_api_key_here
-```
-
-## Command-line Usage
-
-The easiest way to use GeminiTeacher is through its command-line interface, which is automatically installed with the package.
-
-### Basic Command-line Usage
-
-After installation, you can use the `geminiteacher` command directly:
-
-```bash
-# Generate a course from a text file
+# Basic usage with a text file
 geminiteacher --input content.txt --output-dir courses --title "Machine Learning Basics"
 
-# If the command is not found, you can use the Python module syntax:
-python -m geminiteacher.app.generate_course --input content.txt --output-dir courses
-```
-
-### Advanced Command-line Options
-
-For more control, you can use additional command-line options:
-
-```bash
 # Enable parallel processing for faster generation
 geminiteacher --input content.txt --parallel --max-workers 4
 
-# Set a specific temperature for more creative outputs
-geminiteacher --input content.txt --temperature 0.3
-
-# Use a custom prompt file for specialized instructions
-geminiteacher --input content.txt --custom-prompt my_instructions.txt
-
-# Generate a fixed number of chapters
-geminiteacher --input content.txt --max-chapters 5 --fixed-chapter-count
+# Use a custom prompt file and set the temperature
+geminiteacher --input content.txt --custom-prompt prompts.txt --temperature 0.3
 ```
 
-### Using a Configuration File
+### All Command-Line Options
 
-For the most control, create a `config.yaml` file:
+Here is the full list of available command-line options. Any option passed as a flag will override the corresponding value in a `config.yaml` file.
 
-```yaml
-# API Configuration
-api:
-  google_api_key: "your_gemini_api_key_here"  # Or use environment variable
-  model_name: "gemini-1.5-pro"
+| Option                  | Argument        | Description                                                 |
+| ----------------------- | --------------- | ----------------------------------------------------------- |
+| `--config`, `-c`        | `PATH`          | Path to the YAML configuration file.                        |
+| `--input`, `-i`         | `PATH`          | Path to the input content file.                             |
+| `--output-dir`, `-o`    | `PATH`          | Directory to save generated course files.                   |
+| `--title`, `-t`         | `TEXT`          | Course title.                                               |
+| `--custom-prompt`, `-p` | `PATH`          | Path to a custom prompt instructions file.                  |
+| `--temperature`         | `FLOAT`         | Temperature for generation (0.0-1.0).                       |
+| `--max-chapters`        | `INTEGER`       | Maximum number of chapters to generate.                     |
+| `--fixed-chapter-count` | *(flag)*        | If set, generates exactly `max-chapters`.                   |
+| `--parallel`            | *(flag)*        | If set, use parallel processing for chapter generation.     |
+| `--max-workers`         | `INTEGER`       | Max worker processes for parallel generation.               |
+| `--verbose`, `-v`       | *(flag)*        | Enable verbose output for detailed progress logging.        |
+| `--log-file`            | `PATH`          | Optional path to a file to save logs.                       |
 
-# Input/Output Settings
-input:
-  path: "input/content.txt"
+### Troubleshooting the CLI
 
-output:
-  directory: "output"
+**"command not found" error?**
 
-# Course Settings
-course:
-  title: "Machine Learning"
-  custom_prompt: "custom_instructions.txt"
-
-# Generation Settings
-generation:
-  temperature: 0.2
-  max_chapters: 10
-  fixed_chapter_count: false
-
-# Parallel Processing Settings
-parallel:
-  enabled: true
-  max_workers: 4
-  delay_min: 0.2
-  delay_max: 0.8
-  max_retries: 3
-```
-
-Then run:
+If your shell cannot find the `geminiteacher` command, you can run it directly as a Python module:
 
 ```bash
-geminiteacher --config config.yaml
+python -m geminiteacher.app.generate_course --config config.yaml
 ```
 
-For complete details on the command-line interface, see the [CLI Application](app.md) documentation.
+This happens when your Python scripts directory is not in your system's `PATH`. See the [installation guide](installation.md) for more details.
+
+**API Key Errors?**
+
+If you get authentication errors, ensure your `GOOGLE_API_KEY` is set correctly as an environment variable, as described in the [installation guide](installation.md).
 
 ## Python API Usage
 
-### Quick Start
+For programmatic use, you can import GeminiTeacher directly into your Python code.
 
-If you prefer to use GeminiTeacher programmatically, you can use the high-level import:
+### High-Level Functions (Recommended)
 
-```python
-import geminiteacher as gt
+The easiest way to use the API is with the `create_course` and `create_course_parallel` functions.
 
-# Load content from a file or string
-with open("your_content.txt", "r") as f:
-    raw_content = f.read()
+#### Sequential Generation
 
-# Generate a structured course
-course = gt.create_course(raw_content)
-
-# The course object contains all generated components
-print(f"Generated {len(course.chapters)} chapters")
-print(f"Summary: {course.summary[:100]}...")
-```
-
-### Parallel Processing for Speed
-
-For faster course generation, use parallel processing to generate chapters concurrently:
+This is the simplest method, generating one component at a time.
 
 ```python
 import geminiteacher as gt
 
-# Load content from a file or string
-with open("your_content.txt", "r") as f:
-    raw_content = f.read()
+# Your raw content to transform into a course
+with open("content.txt", "r") as f:
+    content = f.read()
 
-# Generate a structured course with parallel processing
-course = gt.create_course_parallel(
-    raw_content, 
-    max_workers=4,              # Number of parallel workers
-    delay_range=(0.2, 0.8),     # Random delay between API requests
-    max_retries=3,              # Retry attempts for failed API calls
-    course_title="my_course",   # Title for saved files
-    output_dir="courses"        # Directory to save generated chapters
-)
-
-# The course object contains all generated components
-print(f"Generated {len(course.chapters)} chapters in parallel")
-print(f"Summary: {course.summary[:100]}...")
-```
-
-### Using the App Module Directly
-
-For more advanced features like progressive saving and detailed logging:
-
-```python
-from geminiteacher.app import create_course_with_progressive_save, configure_logging
-
-# Configure logging
-logger = configure_logging(log_file="generation.log", verbose=True)
-
-# Generate a course with progressive saving
-course = create_course_with_progressive_save(
-    content="Your content here...",
-    course_title="Python Programming",
-    output_dir="courses",
-    temperature=0.2,
+# Generate the full course structure
+course = gt.create_course(
+    content=content,
     max_chapters=5,
-    custom_prompt="Focus on practical examples",
-    verbose=True,
-    logger=logger
+    temperature=0.2
 )
+
+# Print the generated course structure
+print(f"Course Summary: {course.summary}\n")
+for chapter in course.chapters:
+    print(f"- {chapter.title}")
 ```
 
-### Accessing Course Components
+#### Parallel Generation for Speed
 
-The course generator produces structured data that you can easily access:
+Use `create_course_parallel` for large documents to significantly speed up chapter generation.
 
 ```python
-# Iterate through chapters
-for i, chapter in enumerate(course.chapters):
-    print(f"Chapter {i+1}: {chapter.title}")
-    print("Summary:", chapter.summary)
-    print("Explanation:", chapter.explanation[:100] + "...")
-    print("Extension:", chapter.extension[:100] + "...")
-    print("---")
+import geminiteacher as gt
 
-# Access the course summary
-print("Course Summary:", course.summary)
+with open("content.txt", "r") as f:
+    content = f.read()
+
+# Generate a course with chapters created in parallel
+# This also saves chapters to disk as they complete
+course = gt.create_course_parallel(
+    content=content,
+    course_title="My Parallel Course",
+    output_dir="courses_output",
+    max_chapters=10,
+    max_workers=4
+)
+
+print(f"Generated {len(course.chapters)} chapters in parallel.")
 ```
-
-## Advanced Usage
 
 ### Using Individual Components
 
-You can also use the individual components of the pipeline for more control:
+For maximum control, you can use the individual functions from the generation pipeline.
 
 ```python
-from geminiteacher import configure_gemini_llm, generate_toc, generate_chapter, generate_summary
-
-# Configure the Gemini API with custom parameters
-llm = configure_gemini_llm(
-    model_name="gemini-1.5-flash",  # Use a different model
-    temperature=0.3                  # Adjust temperature for more varied outputs
+from geminiteacher import (
+    configure_gemini_llm, 
+    generate_toc, 
+    generate_chapter, 
+    generate_summary
 )
 
-# Generate just the table of contents
-chapter_titles = generate_toc(
-    raw_content, 
-    llm=llm,
-    max_chapters=5,            # Maximum number of chapters
-    fixed_chapter_count=True   # Generate exactly 5 chapters
-)
-print(f"Generated {len(chapter_titles)} chapter titles")
+# 1. Configure the LLM
+llm = configure_gemini_llm(temperature=0.1)
 
-# Generate a single chapter
-chapter = generate_chapter(
-    "Introduction to AI", 
-    raw_content, 
-    llm=llm,
-    custom_prompt="Focus on practical examples and code snippets."
-)
-print(chapter.title)
-print(chapter.summary)
+# 2. Generate the Table of Contents
+chapter_titles = generate_toc(content, llm=llm, max_chapters=5)
 
-# Generate a summary from chapters
-chapters = [chapter]  # You would typically have multiple chapters
-summary = generate_summary(raw_content, chapters, llm=llm)
-print(summary)
-```
+# 3. Generate each chapter individually
+chapters = [
+    generate_chapter(title, content, llm=llm) 
+    for title in chapter_titles
+]
 
-### Using Parallel Components
+# 4. Generate the final summary
+summary = generate_summary(content, chapters, llm=llm)
 
-For more control over the parallel processing:
-
-```python
-from geminiteacher import generate_toc, generate_summary, configure_gemini_llm
-from geminiteacher.parallel import parallel_generate_chapters
-
-# Configure the Gemini API
-llm = configure_gemini_llm()
-
-# Generate table of contents
-chapter_titles = generate_toc(raw_content, llm=llm)
-
-# Generate chapters in parallel with custom parameters
-chapters = parallel_generate_chapters(
-    chapter_titles=chapter_titles,
-    content=raw_content,
-    llm=llm,
-    max_workers=4,
-    delay_range=(0.2, 0.8),
-    max_retries=3,
-    course_title="advanced_course",
-    output_dir="output/courses"
-)
-
-# Generate a summary from the chapters
-summary = generate_summary(raw_content, chapters, llm=llm)
-```
-
-### Custom Prompts
-
-You can customize how chapters are generated by providing custom instructions:
-
-```python
-import geminiteacher as gt
-
-custom_prompt = """
-Focus on practical examples and include code snippets where relevant.
-Each concept should be explained with a real-world application.
-Include exercises at the end of each explanation section.
-"""
-
-course = gt.create_course(
-    raw_content,
-    custom_prompt=custom_prompt,
-    temperature=0.3  # Higher temperature for more creative outputs
-)
-```
-
-## API Reference
-
-### Core Functions
-
-::: geminiteacher.coursemaker.create_course
-
-::: geminiteacher.coursemaker.create_course_parallel
-
-::: geminiteacher.coursemaker.generate_toc
-
-::: geminiteacher.coursemaker.generate_chapter
-
-::: geminiteacher.coursemaker.generate_summary
-
-::: geminiteacher.coursemaker.configure_gemini_llm
-
-### Parallel Processing
-
-::: geminiteacher.parallel.parallel_generate_chapters
-
-::: geminiteacher.parallel.generate_chapter_with_retry
-
-::: geminiteacher.parallel.parallel_map_with_delay
-
-### App Module
-
-::: geminiteacher.app.generate_course.create_course_with_progressive_save
-
-::: geminiteacher.app.generate_course.configure_logging
-
-### Data Models
-
-::: geminiteacher.coursemaker.Course
-
-::: geminiteacher.coursemaker.ChapterContent
-
-## Limitations
-
-- For production use, a valid Google API key must be provided.
-- API rate limits may affect parallel processing performance.
-- Large content may require higher token limits from your Gemini API plan. 
+print("Course generation complete!")
+``` 

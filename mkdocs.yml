@@ -9,14 +9,11 @@ copyright: Maintained by <a href="https://supersheepbear.com">supersheepbear</a>
 
 nav:
   - Home: index.md
+  - Installation: installation.md
   - Usage Guide: usage.md
   - Modules:
     - Overview: modules.md
-    - Core Modules: modules.md#core-modules
-    - Command-line App: modules.md#command-line-application-geminiteacherapp
-    - Data Models: modules.md#data-models
   - Parallel Processing: parallel.md
-  - CLI Application: app.md
 plugins:
   - search
   - mkdocstrings:

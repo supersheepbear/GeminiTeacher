@@ -89,10 +89,19 @@ def load_config(config_path: str) -> Dict[str, Any]:
     Dict[str, Any]
         Configuration dictionary
     """
+    if not os.path.exists(config_path):
+        # If the config file doesn't exist and it's the default config.yaml, return empty dict
+        if config_path == "config.yaml":
+            return {}
+        else:
+            # If a specific config file was requested but doesn't exist, that's an error
+            print(f"Error: Config file '{config_path}' not found")
+            sys.exit(1)
+    
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
             config = yaml.safe_load(f)
-        return config
+        return config if config else {}
     except Exception as e:
         print(f"Error loading configuration: {e}")
         sys.exit(1)
@@ -344,16 +353,17 @@ def main():
     # Configure logging
     logger = configure_logging(args.log_file, args.verbose)
     
-    # Load configuration
+    # Load configuration (empty dict if default config doesn't exist)
     config = load_config(args.config)
     
-    # Set up environment variables
-    setup_environment(config)
+    # Set up environment variables if config exists
+    if config:
+        setup_environment(config)
     
     # Get parameters from command-line arguments or configuration
     input_path = args.input or config.get('input', {}).get('path')
     if not input_path:
-        logger.error("Input file path not specified")
+        logger.error("Input file path not specified. Use --input to specify an input file.")
         sys.exit(1)
     
     output_dir = args.output_dir or config.get('output', {}).get('directory', 'output')
@@ -363,7 +373,7 @@ def main():
     custom_prompt = None
     if args.custom_prompt:
         custom_prompt = read_custom_prompt(args.custom_prompt)
-    elif 'custom_prompt' in config.get('course', {}):
+    elif config.get('course', {}).get('custom_prompt'):
         custom_prompt_path = config['course']['custom_prompt']
         if custom_prompt_path:
             custom_prompt = read_custom_prompt(custom_prompt_path)
