@@ -752,18 +752,72 @@ $env:GOOGLE_API_KEY=&quot;your-api-key-here&quot;
 <p>Create a <code>config.yaml</code> to define your settings, then run:</p>
 <pre><code class="language-bash">uv run python -m geminiteacher.app.generate_course --config config.yaml
 </code></pre>
-<p>Here is an example <code>config.yaml</code>:</p>
-<pre><code class="language-yaml"># --- Input/Output Settings ---
+<p>This is the recommended approach as it keeps your settings organized and version-controllable. Any command-line flag you use will override the settings in the <code>config.yaml</code> file.</p>
+<p>Here is a comprehensive <code>config.yaml</code> example with all available options explained.</p>
+<pre><code class="language-yaml"># =======================================================
+# Comprehensive GeminiTeacher Configuration
+# =======================================================
+
+# --- Input/Output Settings ---
 input:
-  path: &quot;input/content.txt&quot;
+  # Required. Path to your raw content file. This can be any text-based format
+  # that Python can read, such as .txt, .md, .rst, .py, etc.
+  path: &quot;input/my_raw_notes.txt&quot;
+
 output:
-  directory: &quot;output/MyFirstCourse&quot;
+  # Required. Directory where the generated course files will be saved.
+  directory: &quot;output/MyAwesomeCourse&quot;
+  # Optional. If provided, all logs will be saved to this file.
+  log_file: &quot;logs/course_generation.log&quot;
 
 # --- Course Settings ---
 course:
-  title: &quot;Introduction to Artificial Intelligence&quot;
+  # Required. The title of your course.
+  title: &quot;Advanced Python Programming&quot;
+  # Optional. Path to a file with custom instructions for the AI.
+  # This is very useful for guiding the tone, style, and content focus.
+  custom_prompt: &quot;prompts/formal_academic_prompt.txt&quot;
 
-# ... and so on for all other options.
+# --- Generation Settings ---
+generation:
+  # The specific Gemini model to use (e.g., 'gemini-1.5-pro', 'gemini-1.0-pro').
+  # Default: 'gemini-1.5-pro'
+  model_name: 'gemini-1.5-pro-latest'
+  # Controls the &quot;creativity&quot; of the AI. Lower is more predictable. (0.0 - 1.0)
+  # Default: 0.2
+  temperature: 0.25
+  # The target number of chapters for the course.
+  # Default: 10
+  max_chapters: 15
+  # If true, the AI will generate exactly `max_chapters`. If false, the AI
+  # may choose to generate fewer chapters if it deems it appropriate.
+  # Default: false
+  fixed_chapter_count: false
+
+# --- Performance &amp; Reliability Settings ---
+parallel:
+  # Enable parallel processing to generate chapters simultaneously.
+  # This provides a major speed boost for large documents.
+  # Default: false
+  enabled: true
+  # Number of parallel processes to run.
+  # Default: The number of CPU cores on your machine.
+  max_workers: 8
+  # The minimum random delay (in seconds) between parallel API requests
+  # to avoid rate limiting. Default: 0.2
+  delay_min: 0.5
+  # The maximum random delay (in seconds). Default: 0.8
+  delay_max: 1.5
+  # The maximum number of times to retry a failed API call for a chapter.
+  # Default: 3
+  max_retries: 5
+
+# --- General Settings ---
+# Enable verbose output for detailed real-time progress logging.
+# This is very helpful for debugging.
+# Default: false
+verbose: true
+
 </code></pre>
 <h3 id="method-2-using-command-line-flags">Method 2: Using Command-Line Flags<a class="headerlink" href="#method-2-using-command-line-flags" title="Permanent link">&para;</a></h3>
 <p>Pass arguments directly for one-off tasks.</p>
