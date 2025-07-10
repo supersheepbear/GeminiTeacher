@@ -1,23 +1,8 @@
-# GeminiTeacher
+# GeminiTeacher: The AI-Powered Course Creator
 
-[![PyPI version](https://badge.fury.io/py/geminiteacher.svg)](https://badge.fury.io/py/geminiteacher)
-[![Build status](https://img.shields.io/github/actions/workflow/status/supersheepbear/GeminiTeacher/main.yml?branch=main)](https://github.com/supersheepbear/GeminiTeacher/actions/workflows/main.yml?query=branch%3Amain)
-[![codecov](https://codecov.io/gh/supersheepbear/GeminiTeacher/branch/main/graph/badge.svg)](https://codecov.io/gh/supersheepbear/GeminiTeacher)
-[![License](https://img.shields.io/github/license/supersheepbear/GeminiTeacher)](https://img.shields.io/github/license/supersheepbear/GeminiTeacher)
+Turn any text-based document (notes, articles, books) into a structured, multi-chapter online course with a single command.
 
-**GeminiTeacher** is an AI-powered course creation toolkit using Google's Gemini LLM. It transforms raw text, markdown, or documents into structured, lesson-based educational content. Ideal for educators, developers, and content creators.
-
-- **Full Documentation**: [https://supersheepbear.github.io/GeminiTeacher/](https://supersheepbear.github.io/GeminiTeacher/)
-- **Source Code**: [https://github.com/supersheepbear/GeminiTeacher/](https://github.com/supersheepbear/GeminiTeacher/)
-
-## Ways to Use GeminiTeacher
-
-There are two primary ways to use GeminiTeacher, based on your preference.
-
-| Method | Description | Best For |
-| --- | --- | --- |
-| 🚀 **GUI Application** | A user-friendly graphical interface with all options available. | Users who prefer a visual interface and easy controls. |
-| 💻 **Command-Line (CLI)** | A powerful command-line tool for experts and automation. | Power users, developers, and integration into scripts. |
+GeminiTeacher acts like an AI agent, using a sequence of cascading prompts with Google's Gemini models to perform a comprehensive analysis of your content. It intelligently outlines a table of contents, then generates a detailed chapter and a final summary for each part, effectively creating a full book from your raw material.
 
 ### Quick Start (GUI)
 
@@ -72,7 +57,7 @@ The tool will create the specified output directory and fill it with structured 
 
 ## Learn More
 
-For detailed instructions on all features, please see the full [**Usage Guide**](./docs/usage.md).
+For detailed instructions on all features, including how to use **custom instruction files** to guide the AI's tone and style, please see the full [**Usage Guide**](./docs/usage.md).
 
 ## Contributing
 

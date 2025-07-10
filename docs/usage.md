@@ -57,6 +57,8 @@ The GUI provides simple fields for all options.
 
 For power users and automation, the CLI provides full control over the generation process.
 
+**A Note on Input Files**: The input file can be any text-based format that Python can read. This includes `.txt`, `.md`, `.rst`, code files like `.py`, or any other file containing plain text.
+
 ### Method 1: Using a `config.yaml` File (Best Practice)
 
 Create a `config.yaml` to define your settings, then run:
@@ -94,7 +96,7 @@ uv run python -m geminiteacher.app.generate_course \
   --verbose
 ```
 
-For a full list of commands and options, please refer to the [Advanced CLI Options](#all-command-line-options) section below.
+For a full list of commands and options, please refer to the expandable section below.
 
 ---
 
@@ -118,8 +120,8 @@ print(f"Generated {len(course.chapters)} chapters in parallel.")
 ```
 
 ---
-<details>
-<summary><b>Advanced CLI Options (Click to Expand)</b></summary>
+<details open>
+<summary><b>View All Command-Line Options</b></summary>
 
 ### All Command-Line Options
 
