@@ -21,39 +21,20 @@ There are two primary ways to use GeminiTeacher, based on your preference.
 
 ### Quick Start (GUI)
 
-1.  **Installation**: Follow the [**Installation and Setup Guide**](./docs/installation.md).
+1.  **Installation**: All setup instructions are in the new [**Usage Guide**](./docs/usage.md).
 2.  **Launch the App**: Run the following command in your terminal:
     ```bash
     uv run geminiteacher-gui
     ```
-3.  **Generate**: Fill in the fields and click "Generate Course". See the full [**GUI Guide**](./docs/gui.md) for more details.
+3.  **Generate**: Fill in the fields and click "Generate Course". See the full [**Usage Guide**](./docs/usage.md) for more details.
 
 ### Quick Start (CLI)
 
-The command-line interface is best managed with a `config.yaml` file.
+The command-line interface is best managed with a `config.yaml` file. Full instructions, including setup, are in the [**Usage Guide**](./docs/usage.md).
 
-#### 1. Installation
+#### 1. Create a Configuration File
 
-First, install the package and set up your API key by following the [**Installation and Setup Guide**](./docs/installation.md).
-
-#### 2. Create Your Content
-
-Create a text file with the raw material for your course. This can be a `.txt`, `.md`, `.rst`, or any other text-based file containing your notes. For example, `my_notes.txt`.
-
-```text
-// my_notes.txt
-Machine learning is a subfield of artificial intelligence that focuses on developing 
-systems that can learn from and make decisions based on data. Unlike traditional 
-programming where explicit instructions are provided, machine learning algorithms 
-build models based on sample data to make predictions or decisions without being 
-explicitly programmed to do so. Supervised learning involves labeled data, while
-unsupervised learning deals with unlabeled data. Reinforcement learning is about
-agents taking actions in an environment to maximize cumulative reward.
-```
-
-#### 3. Create a Configuration File
-
-Next, create a `config.yaml` to define how you want your course to be generated. It will point to your content file.
+Create a `config.yaml` to define your settings.
 
 ```yaml
 # config.yaml
@@ -70,7 +51,7 @@ parallel:
   enabled: true
 ```
 
-#### 4. Run the Generator
+#### 2. Run the Generator
 
 Now, run the command from your terminal:
 
@@ -85,13 +66,13 @@ The tool will create the specified output directory and fill it with structured 
 - **Automated Course Structuring**: Intelligently organizes raw text into logical, lesson-based chapters.
 - **Config-Driven Workflow**: Use a simple YAML file to control all aspects of course generation.
 - **Parallel Processing**: Generates chapters concurrently to dramatically reduce creation time.
-- **CLI & Python API**: Use the powerful command-line tool for no-code generation or the Python API for programmatic control.
+- **GUI & CLI**: Use the user-friendly graphical interface or the powerful command-line tool.
 - **Customizable AI Behavior**: Use custom prompts and temperature controls to tailor the output to your needs.
 - **Robust and Reliable**: Includes progressive saving and automatic retries for network errors.
 
 ## Learn More
 
-For more advanced CLI options, programmatic Python API usage, and troubleshooting, please see the full [**Usage Guide**](./docs/usage.md).
+For detailed instructions on all features, please see the full [**Usage Guide**](./docs/usage.md).
 
 ## Contributing
 

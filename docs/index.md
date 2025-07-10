@@ -9,23 +9,15 @@
 
 ## Getting Started
 
-To get started, choose your preferred method:
+All the information you need, from installation to advanced usage, has been consolidated into a single, comprehensive guide.
 
-| Method | Description |
-| --- | --- |
-| 🚀 **[GUI Guide](gui.md)** | The recommended path for most users. A user-friendly graphical interface with all options available. |
-| 💻 **[Usage Guide](usage.md)** | For power users and developers. A comprehensive guide to the command-line and Python API. |
+- **[The Complete Usage Guide](usage.md)**  
+  *Click here to learn how to install, configure, and use the GUI, CLI, and Python API.*
 
 ## Key Documentation Sections
 
-- **[Installation Guide](installation.md)**  
-  *Everything you need to get up and running before using either the GUI or CLI.*
-
-- **[GUI Guide](gui.md)**  
-  *A complete walkthrough of the graphical user interface.*
-
-- **[Usage Guide (CLI & API)](usage.md)**  
-  *Detailed instructions for the command-line interface and programmatic Python API.*
+- **[The Complete Usage Guide](usage.md)**  
+  *Everything you need to get up and running.*
 
 - **[Modules Overview](modules.md)**  
   *A technical deep-dive into the package's architecture and core components.*

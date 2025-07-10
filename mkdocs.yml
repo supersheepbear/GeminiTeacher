@@ -9,12 +9,10 @@ copyright: Maintained by <a href="https://supersheepbear.com">supersheepbear</a>
 
 nav:
   - Home: index.md
-  - Installation: installation.md
-  - GUI Guide: gui.md
-  - Usage Guide (CLI & API): usage.md
-  - Modules:
-    - Overview: modules.md
-  - Parallel Processing: parallel.md
+  - Usage Guide: usage.md
+  - Code Reference:
+      - Modules: modules.md
+      - Parallel Processing: parallel.md
 plugins:
   - search
   - mkdocstrings:
