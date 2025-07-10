@@ -20,7 +20,7 @@ First, install the package and set up your API key by following the [**Installat
 
 ### 2. Create Your Content
 
-Create a text file with the raw material for your course. For example, `my_notes.txt`.
+Create a text file with the raw material for your course. This can be a `.txt`, `.md`, `.rst`, or any other text-based file containing your notes. For example, `my_notes.txt`.
 
 ```text
 // my_notes.txt
@@ -35,7 +35,7 @@ agents taking actions in an environment to maximize cumulative reward.
 
 ### 3. Create a Configuration File
 
-Next, create a `config.yaml` to define how you want your course to be generated.
+Next, create a `config.yaml` to define how you want your course to be generated. It will point to your content file.
 
 ```yaml
 # config.yaml
@@ -57,7 +57,7 @@ parallel:
 Now, run the command from your terminal:
 
 ```bash
-geminiteacher --config config.yaml
+uv run python -m geminiteacher.app.generate_course --config config.yaml
 ```
 
 The tool will create the specified output directory and fill it with structured markdown files for each chapter and a course summary.

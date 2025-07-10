@@ -19,7 +19,8 @@ Create a `config.yaml` file to manage all your settings in one place. This is th
 
     # --- Input/Output Settings ---
     input:
-      # Path to your raw content file (e.g., a text file with your notes).
+      # Path to your raw content file. This can be any text-based format
+      # that Python can read, such as .txt, .md, .rst, .py, etc.
       path: "input/content.txt"
     output:
       # Directory where the generated course files will be saved.
@@ -54,7 +55,7 @@ Create a `config.yaml` file to manage all your settings in one place. This is th
     Simply point the CLI to your configuration file.
 
     ```bash
-    geminiteacher --config config.yaml
+    uv run python -m geminiteacher.app.generate_course --config config.yaml
     ```
 
 ### Method 2: Using Command-Line Flags
@@ -63,13 +64,13 @@ You can also control the generation process directly with command-line arguments
 
 ```bash
 # Basic usage with a text file
-geminiteacher --input content.txt --output-dir courses --title "Machine Learning Basics"
+uv run python -m geminiteacher.app.generate_course --input content.txt --output-dir courses --title "Machine Learning Basics"
 
 # Enable parallel processing for faster generation
-geminiteacher --input content.txt --parallel --max-workers 4
+uv run python -m geminiteacher.app.generate_course --input content.txt --parallel --max-workers 4
 
 # Use a custom prompt file and set the temperature
-geminiteacher --input content.txt --custom-prompt prompts.txt --temperature 0.3
+uv run python -m geminiteacher.app.generate_course --input content.txt --custom-prompt prompts.txt --temperature 0.3
 ```
 
 ### All Command-Line Options

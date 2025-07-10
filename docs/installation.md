@@ -17,7 +17,7 @@ This command installs the package along with its command-line interface.
 To verify that the command-line tool is properly installed, you can run:
 
 ```bash
-geminiteacher --help
+uv run python -m geminiteacher.app.generate_course --help
 ```
 
 If you see the help message, the installation was successful.
