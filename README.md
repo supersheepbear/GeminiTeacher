@@ -2,6 +2,8 @@
 
 Turn any text-based document (notes, articles, books) into a structured, multi-chapter online course with a single command.
 
+**[Full Documentation Site](https://supersheepbear.github.io/GeminiTeacher/)**
+
 GeminiTeacher acts like an AI agent, using a sequence of cascading prompts with Google's Gemini models to perform a comprehensive analysis of your content. It intelligently outlines a table of contents, then generates a detailed chapter and a final summary for each part, effectively creating a full book from your raw material.
 
 ### Quick Start (GUI)

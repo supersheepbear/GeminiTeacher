@@ -127,23 +127,68 @@ print(f"Generated {len(course.chapters)} chapters in parallel.")
 
 Here is the full list of available command-line options.
 
-| Option                  | Alias | Type      | Description                                                                                                                              |
-| ----------------------- | ----- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `--config`              | `-c`  | `PATH`    | Path to the YAML configuration file. If used, all other options can be defined here.                                                     |
-| `--input`               | `-i`  | `PATH`    | **Required.** Path to the input content file (e.g., `.txt`, `.md`).                                                                       |
-| `--output-dir`          | `-o`  | `PATH`    | **Required.** Directory where the generated course files will be saved.                                                                  |
-| `--title`               | `-t`  | `TEXT`    | **Required.** The title of your course.                                                                                                  |
-| `--custom-prompt`       | `-p`  | `PATH`    | Optional path to a file containing custom instructions for the AI to follow during generation.                                           |
-| `--model-name`          |       | `TEXT`    | The specific Gemini model to use (e.g., `gemini-1.5-pro`, `gemini-2.5-flash`). Default: `gemini-1.5-pro`.                                    |
-| `--temperature`         |       | `FLOAT`   | Controls the "creativity" or randomness of the AI's output. A value from `0.0` (most predictable) to `1.0` (most creative). Default: `0.2`. |
-| `--max-chapters`        |       | `INTEGER` | The target number of chapters for the course. The final number may be less if the AI deems it appropriate. Default: `10`.                |
-| `--fixed-chapter-count` |       | `FLAG`    | If set, forces the AI to generate exactly the number of chapters specified by `--max-chapters`.                                          |
-| `--parallel`            |       | `FLAG`    | If set, enables parallel processing to generate chapters simultaneously for a significant speed boost.                                   |
-| `--max-workers`         |       | `INTEGER` | When using `--parallel`, this sets the number of concurrent processes. Defaults to the number of CPU cores on your machine.              |
-| `--delay-min`           |       | `FLOAT`   | The minimum random delay (in seconds) between parallel API requests to avoid rate limiting. Default: `0.2`.                              |
-| `--delay-max`           |       | `FLOAT`   | The maximum random delay (in seconds) between parallel API requests. Default: `0.8`.                                                     |
-| `--max-retries`         |       | `INTEGER` | The maximum number of times to retry a failed API call for a chapter before giving up. Default: `3`.                                     |
-| `--verbose`             | `-v`  | `FLAG`    | Enable verbose output for detailed real-time progress logging, which is very helpful for debugging.                                    |
-| `--log-file`            |       | `PATH`    | Optional path to a file where all log output will be saved.                                                                              |
+*   **`--config`** (Alias: **`-c`**)  
+    *Type*: `PATH`  
+    Path to the YAML configuration file. If used, all other options can be defined here.
+
+*   **`--input`** (Alias: **`-i`**)  
+    *Type*: `PATH`  
+    **Required.** Path to the input content file (e.g., `.txt`, `.md`).
+
+*   **`--output-dir`** (Alias: **`-o`**)  
+    *Type*: `PATH`  
+    **Required.** Directory where the generated course files will be saved.
+
+*   **`--title`** (Alias: **`-t`**)  
+    *Type*: `TEXT`  
+    **Required.** The title of your course.
+
+*   **`--custom-prompt`** (Alias: **`-p`**)  
+    *Type*: `PATH`  
+    Optional path to a file containing custom instructions for the AI to follow during generation.
+
+*   **`--model-name`**  
+    *Type*: `TEXT`  
+    The specific Gemini model to use (e.g., `gemini-1.5-pro`, `gemini-2.5-flash`). Default: `gemini-1.5-pro`.
+
+*   **`--temperature`**  
+    *Type*: `FLOAT`  
+    Controls the "creativity" or randomness of the AI's output. A value from `0.0` (most predictable) to `1.0` (most creative). Default: `0.2`.
+
+*   **`--max-chapters`**  
+    *Type*: `INTEGER`  
+    The target number of chapters for the course. The final number may be less if the AI deems it appropriate. Default: `10`.
+
+*   **`--fixed-chapter-count`**  
+    *Type*: `FLAG`  
+    If set, forces the AI to generate exactly the number of chapters specified by `--max-chapters`.
+
+*   **`--parallel`**  
+    *Type*: `FLAG`  
+    If set, enables parallel processing to generate chapters simultaneously for a significant speed boost.
+
+*   **`--max-workers`**  
+    *Type*: `INTEGER`  
+    When using `--parallel`, this sets the number of concurrent processes. Defaults to the number of CPU cores on your machine.
+
+*   **`--delay-min`**  
+    *Type*: `FLOAT`  
+    The minimum random delay (in seconds) between parallel API requests to avoid rate limiting. Default: `0.2`.
+
+*   **`--delay-max`**  
+    *Type*: `FLOAT`  
+    The maximum random delay (in seconds) between parallel API requests. Default: `0.8`.
+
+*   **`--max-retries`**  
+    *Type*: `INTEGER`  
+    The maximum number of times to retry a failed API call for a chapter before giving up. Default: `3`.
+
+*   **`--verbose`** (Alias: **`-v`**)  
+    *Type*: `FLAG`  
+    Enable verbose output for detailed real-time progress logging, which is very helpful for debugging.
+
+*   **`--log-file`**  
+    *Type*: `PATH`  
+    Optional path to a file where all log output will be saved.
 
 </details> 
