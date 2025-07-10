@@ -15,9 +15,9 @@ The entire development process must follow the established Python Package Develo
 
 ### High-level Task Breakdown
 
-The implementation will be broken down into the following verifiable, test-driven tasks. A new module, `src/cascadellm/coursemaker.py`, will be created to house the logic.
+The implementation will be broken down into the following verifiable, test-driven tasks. A new module, `src/geminiteacher/coursemaker.py`, will be created to house the logic.
 
-1.  **Setup**: Create the necessary files: `src/cascadellm/coursemaker.py` and `tests/test_coursemaker.py`.
+1.  **Setup**: Create the necessary files: `src/geminiteacher/coursemaker.py` and `tests/test_coursemaker.py`.
 2.  **Phase 1 (Table of Contents)**: Implement `generate_toc` to create a chapter list from raw text.
 3.  **Phase 2 (Prompt Generation)**: Implement `create_chapter_prompt_template` which is a simple utility.
 4.  **Phase 3 (Chapter Explanation)**: Implement `generate_chapter` to create a structured explanation for a single chapter.
@@ -27,14 +27,14 @@ The implementation will be broken down into the following verifiable, test-drive
 ### Project Status Board
 
 -   [x] **Task 1: Setup**
-    -   [x] Create `src/cascadellm/coursemaker.py`
+    -   [x] Create `src/geminiteacher/coursemaker.py`
     -   [x] Create `tests/test_coursemaker.py`
 -   [x] **Task 2: Implement Phase 1 - Table of Contents Generation (`generate_toc`)**
     -   [x] Write a failing test for `generate_toc` in `tests/test_coursemaker.py`.
-    -   [x] Implement the `generate_toc` function in `src/cascadellm/coursemaker.py` to pass the test.
+    -   [x] Implement the `generate_toc` function in `src/geminiteacher/coursemaker.py` to pass the test.
 -   [x] **Task 3: Implement Phase 2 - Chapter Prompt Generation (`create_chapter_prompt_template`)**
     -   [x] Write a test for the prompt template logic.
-    -   [x] Define the `create_chapter_prompt_template` in `src/cascadellm/coursemaker.py`.
+    -   [x] Define the `create_chapter_prompt_template` in `src/geminiteacher/coursemaker.py`.
 -   [x] **Task 4: Implement Phase 3 - Chapter Explanation Generation (`generate_chapter`)**
     -   [x] Write a failing test for `generate_chapter` that mocks the LLM and checks for structured output parsing.
     -   [x] Implement the `generate_chapter` function.
@@ -207,7 +207,7 @@ After initial planning, the user decided to use the existing `markitdown` librar
 The plan has been simplified to focus on integrating the `markitdown` library.
 
 1.  **Integrate Dependency**: Add `'markitdown[pdf]'` to the project dependencies in `pyproject.toml`.
-2.  **Implement Converter Wrapper**: In `src/cascadellm/converter.py`, implement a `convert_to_markdown` function that initializes the `MarkItDown` class and uses it to convert the input file.
+2.  **Implement Converter Wrapper**: In `src/geminiteacher/converter.py`, implement a `convert_to_markdown` function that initializes the `MarkItDown` class and uses it to convert the input file.
 3.  **Write Wrapper Tests**: In `tests/test_converter.py`, write unit tests that mock the `MarkItDown` object to ensure our wrapper function calls it correctly.
 4.  **Integrate into the Main App**: Modify `app/generate_course.py` to check the input file extension and call the new converter function for supported types.
 5.  **Update Documentation**: Update `app/README.md` to reflect the new capabilities and any new setup steps required for the dependency.
@@ -215,7 +215,7 @@ The plan has been simplified to focus on integrating the `markitdown` library.
 ### Project Status Board
 
 - [x] **Task 1: Setup Converter Module**
-  - [x] Create `src/cascadellm/converter.py`
+  - [x] Create `src/geminiteacher/converter.py`
   - [x] Create `tests/test_converter.py`
 - [x] **Task 2: Integrate `markitdown`**
   - [x] Add `markitdown[pdf]` to `pyproject.toml`

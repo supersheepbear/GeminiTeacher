@@ -10,6 +10,7 @@ The parallel processing capabilities include:
 2. **Rate Limit Management**: Add randomized delays between API requests to avoid rate limits
 3. **Robust Error Handling**: Automatically retry failed requests with exponential backoff
 4. **Ordered Results**: Ensure outputs are returned in the same order as inputs, regardless of completion time
+5. **Progressive File Saving**: Each chapter is saved to disk as soon as it's generated, preventing data loss
 
 ## Key Functions
 
@@ -18,11 +19,8 @@ The parallel processing capabilities include:
 The main orchestration function that handles parallel generation of course chapters:
 
 ```python
-from cascadellm.parallel import parallel_generate_chapters
-from cascadellm.coursemaker import configure_gemini_llm
-
-# Configure the LLM
-llm = configure_gemini_llm()
+import geminiteacher as gt
+from geminiteacher.parallel import parallel_generate_chapters
 
 # Define chapter titles to generate
 chapter_titles = [
@@ -35,10 +33,11 @@ chapter_titles = [
 chapters = parallel_generate_chapters(
     chapter_titles=chapter_titles,
     content="Your raw content here",
-    llm=llm,
     max_workers=4,              # Number of parallel workers (processes)
     delay_range=(0.2, 0.8),     # Random delay between API requests in seconds
-    max_retries=3               # Number of retry attempts for failed requests
+    max_retries=3,              # Number of retry attempts for failed requests
+    course_title="ML_Course",   # Title for saved files
+    output_dir="courses"        # Directory to save generated chapters
 )
 
 # Process the generated chapters
@@ -51,17 +50,13 @@ for i, chapter in enumerate(chapters):
 A robust wrapper around the standard `generate_chapter` function that adds retry logic:
 
 ```python
-from cascadellm.parallel import generate_chapter_with_retry
-from cascadellm.coursemaker import configure_gemini_llm
-
-# Configure the LLM
-llm = configure_gemini_llm()
+import geminiteacher as gt
+from geminiteacher.parallel import generate_chapter_with_retry
 
 # Generate a single chapter with retry logic
 chapter = generate_chapter_with_retry(
     chapter_title="Introduction to Neural Networks",
     content="Your raw content here",
-    llm=llm,
     max_retries=3,              # Maximum number of retry attempts
     retry_delay=1.0             # Base delay between retries (will increase exponentially)
 )
@@ -75,7 +70,7 @@ print(f"Summary: {chapter.summary[:100]}...")
 A generic function for applying any function to a list of items in parallel with controlled delays:
 
 ```python
-from cascadellm.parallel import parallel_map_with_delay
+from geminiteacher.parallel import parallel_map_with_delay
 import time
 
 # Define a function to execute in parallel
@@ -100,6 +95,35 @@ results = parallel_map_with_delay(
 for item, result in zip(items, results):
     print(f"Original: {item} → Result: {result}")
 ```
+
+## Progressive File Saving
+
+A key feature of the parallel processing module is its ability to save chapters to disk as they are generated. This provides several benefits:
+
+1. **Data Safety**: Even if the process is interrupted, completed chapters are already saved
+2. **Progress Tracking**: You can monitor progress by watching files appear in the output directory
+3. **Immediate Access**: Start reviewing early chapters while later ones are still being generated
+
+Example of how files are saved:
+
+```python
+import geminiteacher as gt
+
+course = gt.create_course_parallel(
+    content="Your content here",
+    course_title="Data_Science",
+    output_dir="my_courses"
+)
+
+# Files will be saved in a structure like:
+# my_courses/
+#   └── Data_Science/
+#       ├── chapter_01_Introduction_to_Data_Science.md
+#       ├── chapter_02_Data_Collection_and_Cleaning.md
+#       └── chapter_03_Exploratory_Data_Analysis.md
+```
+
+Each chapter file contains the structured content with title, summary, explanation, and extension sections.
 
 ## API Rate Limits Consideration
 
@@ -133,11 +157,11 @@ This ensures robustness even when dealing with unreliable network conditions or 
 
 ### Core Functions
 
-::: cascadellm.parallel.parallel_generate_chapters
+::: geminiteacher.parallel.parallel_generate_chapters
 
-::: cascadellm.parallel.generate_chapter_with_retry
+::: geminiteacher.parallel.generate_chapter_with_retry
 
-::: cascadellm.parallel.parallel_map_with_delay
+::: geminiteacher.parallel.parallel_map_with_delay
 
 ## Performance Considerations
 
@@ -153,18 +177,16 @@ When using parallel processing, consider the following to optimize performance:
 The parallel module integrates seamlessly with the coursemaker module through the `create_course_parallel` function:
 
 ```python
-from cascadellm.coursemaker import create_course_parallel, configure_gemini_llm
-
-# Configure the LLM
-llm = configure_gemini_llm()
+import geminiteacher as gt
 
 # Generate a course using parallel processing
-course = create_course_parallel(
+course = gt.create_course_parallel(
     "Your raw content here",
-    llm=llm,
     max_workers=4,
     delay_range=(0.2, 0.8),
-    max_retries=3
+    max_retries=3,
+    course_title="Advanced_Topics",
+    output_dir="output/courses"
 )
 
 print(f"Generated {len(course.chapters)} chapters in parallel")

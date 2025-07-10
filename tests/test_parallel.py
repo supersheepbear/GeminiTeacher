@@ -2,16 +2,18 @@
 from unittest.mock import patch, MagicMock, ANY
 import pytest
 
-from cascadellm.parallel import (
+from geminiteacher.parallel import (
     generate_chapter_with_retry,
     parallel_map_with_delay,
     parallel_generate_chapters,
-    _worker_generate_chapter
+    _worker_generate_chapter,
+    _worker_generate_and_save_chapter,
+    save_chapter_to_file
 )
-from cascadellm.coursemaker import ChapterContent
+from geminiteacher.coursemaker import ChapterContent
 
 
-@patch('cascadellm.parallel.generate_chapter')
+@patch('geminiteacher.parallel.generate_chapter')
 def test_generate_chapter_with_retry_success_first_attempt(mock_generate_chapter):
     """Test that generate_chapter_with_retry returns the chapter on first successful attempt."""
     # Arrange
@@ -43,8 +45,8 @@ def test_generate_chapter_with_retry_success_first_attempt(mock_generate_chapter
     )
 
 
-@patch('cascadellm.parallel.time.sleep')
-@patch('cascadellm.parallel.generate_chapter')
+@patch('geminiteacher.parallel.time.sleep')
+@patch('geminiteacher.parallel.generate_chapter')
 def test_generate_chapter_with_retry_empty_response_then_success(mock_generate_chapter, mock_sleep):
     """Test that generate_chapter_with_retry retries on empty explanation and succeeds."""
     # Arrange
@@ -78,8 +80,8 @@ def test_generate_chapter_with_retry_empty_response_then_success(mock_generate_c
     mock_sleep.assert_called_once()  # Should sleep once between retries
 
 
-@patch('cascadellm.parallel.time.sleep')
-@patch('cascadellm.parallel.generate_chapter')
+@patch('geminiteacher.parallel.time.sleep')
+@patch('geminiteacher.parallel.generate_chapter')
 def test_generate_chapter_with_retry_exception_then_success(mock_generate_chapter, mock_sleep):
     """Test that generate_chapter_with_retry retries on exception and succeeds."""
     # Arrange
@@ -107,8 +109,8 @@ def test_generate_chapter_with_retry_exception_then_success(mock_generate_chapte
     mock_sleep.assert_called_once()  # Should sleep once between retries
 
 
-@patch('cascadellm.parallel.time.sleep')
-@patch('cascadellm.parallel.generate_chapter')
+@patch('geminiteacher.parallel.time.sleep')
+@patch('geminiteacher.parallel.generate_chapter')
 def test_generate_chapter_with_retry_all_attempts_fail(mock_generate_chapter, mock_sleep):
     """Test that generate_chapter_with_retry returns error chapter when all attempts fail."""
     # Arrange
@@ -131,8 +133,8 @@ def test_generate_chapter_with_retry_all_attempts_fail(mock_generate_chapter, mo
     assert mock_sleep.call_count == 2  # Should sleep between each retry
 
 
-@patch('cascadellm.parallel.ProcessPoolExecutor')
-@patch('cascadellm.parallel.time.sleep')
+@patch('geminiteacher.parallel.ProcessPoolExecutor')
+@patch('geminiteacher.parallel.time.sleep')
 def test_parallel_map_with_delay(mock_sleep, mock_process_pool_executor):
     """Test that parallel_map_with_delay correctly processes items in parallel."""
     # Arrange
@@ -174,7 +176,7 @@ def test_parallel_map_with_delay(mock_sleep, mock_process_pool_executor):
     mock_executor.submit.assert_any_call(test_func, 3, factor=2)
 
 
-@patch('cascadellm.parallel.parallel_map_with_delay')
+@patch('geminiteacher.parallel.parallel_map_with_delay')
 def test_parallel_generate_chapters(mock_parallel_map_with_delay):
     """Test that parallel_generate_chapters correctly delegates to parallel_map_with_delay."""
     # Arrange
@@ -182,7 +184,12 @@ def test_parallel_generate_chapters(mock_parallel_map_with_delay):
         ChapterContent(title="Chapter 1", summary="Summary 1"),
         ChapterContent(title="Chapter 2", summary="Summary 2")
     ]
-    mock_parallel_map_with_delay.return_value = mock_chapters
+    # Mock the return value to match the expected format: list of tuples (idx, chapter, file_path)
+    mock_return = [
+        (0, mock_chapters[0], "path/to/chapter1.md"),
+        (1, mock_chapters[1], "path/to/chapter2.md")
+    ]
+    mock_parallel_map_with_delay.return_value = mock_return
     
     chapter_titles = ["Chapter 1", "Chapter 2"]
     content = "Test content"
@@ -199,21 +206,23 @@ def test_parallel_generate_chapters(mock_parallel_map_with_delay):
         custom_prompt="Custom prompt",
         max_workers=2,
         delay_range=(0.2, 0.3),
-        max_retries=2
+        max_retries=2,
+        course_title="test_course",
+        output_dir="test_output"
     )
     
     # Assert
     assert result == mock_chapters
     
     # Check that parallel_map_with_delay was called with the correct parameters
-    # We need to check that it's called with _worker_generate_chapter and tuples of (index, title)
+    # We need to check that it's called with _worker_generate_and_save_chapter and tuples of (index, title)
     mock_parallel_map_with_delay.assert_called_once()
     
     # Get the actual call arguments
     call_args = mock_parallel_map_with_delay.call_args
     
-    # Check the function argument (should be _worker_generate_chapter)
-    assert call_args[0][0] == _worker_generate_chapter
+    # Check the function argument (should be _worker_generate_and_save_chapter)
+    assert call_args[0][0] == _worker_generate_and_save_chapter
     
     # Check the items argument (should be list of (index, title) tuples)
     items_arg = call_args[0][1]
@@ -231,10 +240,12 @@ def test_parallel_generate_chapters(mock_parallel_map_with_delay):
     assert call_args[1]['temperature'] == 0.5
     assert call_args[1]['custom_prompt'] == "Custom prompt"
     assert call_args[1]['max_retries'] == 2
+    assert call_args[1]['course_title'] == "test_course"
+    assert call_args[1]['output_dir'] == "test_output"
 
 
-@patch('cascadellm.coursemaker.configure_gemini_llm')
-@patch('cascadellm.parallel.generate_chapter_with_retry')
+@patch('geminiteacher.coursemaker.configure_gemini_llm')
+@patch('geminiteacher.parallel.generate_chapter_with_retry')
 def test_worker_generate_chapter(mock_generate_chapter_with_retry, mock_configure_gemini_llm):
     """Test that _worker_generate_chapter correctly initializes an LLM and generates a chapter."""
     # Arrange

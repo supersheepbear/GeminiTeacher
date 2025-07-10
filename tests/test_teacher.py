@@ -433,25 +433,29 @@ def test_generate_summary_with_explicit_llm(mock_llm_chain):
 
 
 @patch('geminiteacher.coursemaker.get_default_llm')
-@patch('geminiteacher.coursemaker.LLMChain')
-def test_generate_summary_handles_empty_chapters(mock_llm_chain, mock_get_default_llm):
+@patch('geminiteacher.coursemaker.generate_toc')
+@patch('geminiteacher.coursemaker.generate_summary')
+def test_generate_summary_handles_empty_chapters(mock_generate_summary, mock_generate_toc, mock_get_default_llm):
     """Test that generate_summary handles empty chapters list."""
     # Arrange
     mock_llm = MagicMock()
     mock_get_default_llm.return_value = mock_llm
     
-    mock_chain_instance = MagicMock()
-    mock_llm_chain.return_value = mock_chain_instance
-    mock_chain_instance.invoke.return_value = {"text": "Empty course summary"}
+    # Configure mock to return empty TOC
+    mock_generate_toc.return_value = []
+    mock_generate_summary.return_value = ""
     
     # Act
-    result = generate_summary("Test content", [], llm=None)
+    course = create_course_parallel("Test content")
     
     # Assert
-    assert result == "Empty course summary"
-    mock_get_default_llm.assert_called_once()
-    mock_llm_chain.assert_called_once()
-    mock_chain_instance.invoke.assert_called_once()
+    assert course.content == "Test content"
+    assert course.chapters == []
+    assert course.summary == ""
+    
+    # Verify the interactions with the mocks
+    mock_generate_toc.assert_called_once()
+    mock_generate_summary.assert_not_called()  # Should not be called with empty chapters 
 
 
 @patch('geminiteacher.coursemaker.get_default_llm')

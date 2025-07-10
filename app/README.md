@@ -1,6 +1,6 @@
 # Course Generator App
 
-This application uses the CascadeLLM coursemaker module to generate structured educational courses from raw text content.
+This application uses the GeminiTeacher coursemaker module to generate structured educational courses from raw text content.
 
 ## Features
 

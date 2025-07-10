@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
 
-from cascadellm.converter import convert_to_markdown
+from geminiteacher.converter import convert_to_markdown
 
 
 def test_convert_to_markdown_basic_usage():
@@ -27,7 +27,7 @@ def test_convert_to_markdown_basic_usage():
     file_path = "dummy/path/to/file.pdf"
 
     # Act
-    with patch('cascadellm.converter.Path', return_value=mock_path_instance):
+    with patch('geminiteacher.converter.Path', return_value=mock_path_instance):
         with patch.dict('sys.modules', {'markitdown': mock_markitdown}):
             result = convert_to_markdown(file_path)
 
@@ -65,9 +65,9 @@ def test_convert_to_markdown_with_output_dir():
     output_dir = "output/folder"
 
     # Act
-    with patch('cascadellm.converter.Path', return_value=mock_path_instance):
+    with patch('geminiteacher.converter.Path', return_value=mock_path_instance):
         with patch.dict('sys.modules', {'markitdown': mock_markitdown}):
-            with patch('cascadellm.converter.os.makedirs', mock_makedirs):
+            with patch('geminiteacher.converter.os.makedirs', mock_makedirs):
                 with patch('builtins.open', mock_file):
                     result = convert_to_markdown(file_path, output_dir=output_dir)
 

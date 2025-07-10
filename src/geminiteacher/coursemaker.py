@@ -707,7 +707,7 @@ def create_course_parallel(
         The generated course object
     """
     # Import here to avoid circular imports
-    from cascadellm.parallel import parallel_generate_chapters
+    from geminiteacher.parallel import parallel_generate_chapters
     
     # Initialize the course with the original content
     course = Course(content=content)

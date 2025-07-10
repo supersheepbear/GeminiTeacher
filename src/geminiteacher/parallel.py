@@ -1,4 +1,4 @@
-"""Parallel processing utilities for the CascadeLLM coursemaker module."""
+"""Parallel processing utilities for the GeminiTeacher coursemaker module."""
 import random
 import time
 import logging
@@ -6,10 +6,11 @@ import os
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
 from typing import List, Optional, Callable, Any, TypeVar, Dict, Tuple
+from pathlib import Path
 
 from langchain_core.language_models import BaseLanguageModel
 
-from cascadellm.coursemaker import ChapterContent, generate_chapter
+from geminiteacher.coursemaker import ChapterContent, generate_chapter
 
 # Type variable for generic return type
 T = TypeVar('T')
@@ -17,11 +18,11 @@ T = TypeVar('T')
 # Set up a process-safe logger configuration
 def _configure_worker_logger():
     """Configure a logger for worker processes."""
-    logger = logging.getLogger("cascadellm.parallel")
+    logger = logging.getLogger("geminiteacher.parallel")
     # Check if handlers are already configured to avoid duplicate logs
     if not logger.handlers:
         # Get the log level from the parent process if possible
-        log_level = os.environ.get("CASCADELLM_LOG_LEVEL", "INFO")
+        log_level = os.environ.get("GeminiTeacher_LOG_LEVEL", "INFO")
         numeric_level = getattr(logging, log_level.upper(), logging.INFO)
         logger.setLevel(numeric_level)
         
@@ -75,7 +76,7 @@ def generate_chapter_with_retry(
     This function implements an exponential backoff strategy for retries,
     with each retry attempt waiting longer than the previous one.
     """
-    logger = logging.getLogger("cascadellm.parallel")
+    logger = logging.getLogger("geminiteacher.parallel")
     
     for attempt in range(max_retries + 1):
         try:
@@ -162,12 +163,12 @@ def parallel_map_with_delay(
     >>> print(results)
     [2, 4, 6, 8, 10]
     """
-    logger = logging.getLogger("cascadellm.parallel")
+    logger = logging.getLogger("geminiteacher.parallel")
     results = []
     total_items = len(items)
     
     # Export the current log level to the environment for worker processes
-    os.environ["CASCADELLM_LOG_LEVEL"] = logger.getEffectiveLevel().__str__()
+    os.environ["GeminiTeacher_LOG_LEVEL"] = logger.getEffectiveLevel().__str__()
     
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         # Submit all tasks with a delay between submissions
@@ -248,7 +249,7 @@ def _worker_generate_chapter(
     
     try:
         # Import here to avoid circular imports and ensure imports happen in the worker process
-        from cascadellm.coursemaker import configure_gemini_llm
+        from geminiteacher.coursemaker import configure_gemini_llm
         
         # Initialize a new LLM instance within this worker process
         logger.info(f"Configuring LLM for chapter {idx+1}: '{chapter_title}'")
@@ -304,9 +305,6 @@ def save_chapter_to_file(course_title: str, chapter: ChapterContent, chapter_ind
     str
         Path to the saved chapter file
     """
-    import os
-    from pathlib import Path
-    
     # Create output directory if it doesn't exist
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -456,7 +454,7 @@ def parallel_generate_chapters(
     List[ChapterContent]
         List of generated chapter contents in the same order as the input titles.
     """
-    logger = logging.getLogger("cascadellm.parallel")
+    logger = logging.getLogger("geminiteacher.parallel")
     logger.info(f"Starting parallel generation of {len(chapter_titles)} chapters with {max_workers or multiprocessing.cpu_count()} workers")
     
     # Get API key from the LLM if provided or environment
@@ -480,30 +478,24 @@ def parallel_generate_chapters(
     logger.info(f"Saving chapters progressively to {output_dir}/{course_title}/")
     
     # Generate chapters in parallel with delay between submissions and save each one as it completes
-    try:
-        results = parallel_map_with_delay(
-            _worker_generate_and_save_chapter,
-            indexed_titles,
-            max_workers=max_workers,
-            delay_range=delay_range,
-            content=content,
-            course_title=course_title,
-            output_dir=output_dir,
-            api_key=api_key,
-            model_name=model_name,
-            temperature=temperature,
-            custom_prompt=custom_prompt,
-            max_retries=max_retries,
-            retry_delay=1.0
-        )
-        
-        # Extract just the chapter content from the results (idx, chapter, file_path)
-        chapters = [result[1] for result in results]
-        
-        logger.info(f"Completed parallel generation of {len(chapters)} chapters")
-        return chapters
-        
-    except Exception as e:
-        logger.error(f"Parallel chapter generation failed with error: {str(e)}")
-        # Return any chapters we've generated so far, or an empty list
-        return [] 
+    results = parallel_map_with_delay(
+        _worker_generate_and_save_chapter,
+        indexed_titles,
+        max_workers=max_workers,
+        delay_range=delay_range,
+        content=content,
+        course_title=course_title,
+        output_dir=output_dir,
+        api_key=api_key,
+        model_name=model_name,
+        temperature=temperature,
+        custom_prompt=custom_prompt,
+        max_retries=max_retries,
+        retry_delay=1.0
+    )
+    
+    # Extract just the chapter content from the results (idx, chapter, file_path)
+    chapters = [result[1] for result in results]
+    
+    logger.info(f"Completed parallel generation of {len(chapters)} chapters")
+    return chapters 

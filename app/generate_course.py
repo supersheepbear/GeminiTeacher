@@ -2,7 +2,7 @@
 """
 Course Generator App
 
-This script uses the CascadeLLM coursemaker module to generate structured courses
+This script uses the GeminiTeacher coursemaker module to generate structured courses
 from input content, using configuration from a YAML file.
 """
 
@@ -15,8 +15,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-from cascadellm.coursemaker import create_course, configure_gemini_llm
-from cascadellm.converter import convert_to_markdown
+from geminiteacher.coursemaker import create_course, configure_gemini_llm
+from geminiteacher.converter import convert_to_markdown
 
 
 def configure_logging(log_file=None, verbose=False):
@@ -63,14 +63,14 @@ def configure_logging(log_file=None, verbose=False):
         # Add the file handler to the logger
         logger.addHandler(file_handler)
         
-        # Also add the file handler to the cascadellm loggers
-        for module in ["cascadellm", "cascadellm.coursemaker", "cascadellm.parallel"]:
+        # Also add the file handler to the geminiteacher loggers
+        for module in ["geminiteacher", "geminiteacher.coursemaker", "geminiteacher.parallel"]:
             module_logger = logging.getLogger(module)
             module_logger.addHandler(file_handler)
             module_logger.setLevel(log_level)
     
     # Set environment variable with log level for worker processes
-    os.environ["CASCADELLM_LOG_LEVEL"] = str(log_level)
+    os.environ["GeminiTeacher_LOG_LEVEL"] = str(log_level)
     
     return logger
 
@@ -251,7 +251,7 @@ def create_course_with_progressive_save(
     """
     Create a course and save each chapter as it's generated.
     
-    This function wraps the create_course function from cascadellm.coursemaker
+    This function wraps the create_course function from geminiteacher.coursemaker
     but saves each chapter to disk immediately after it's generated.
     
     Parameters
@@ -282,7 +282,7 @@ def create_course_with_progressive_save(
     Course
         The generated course object
     """
-    from cascadellm.coursemaker import Course, ChapterContent, generate_toc, generate_chapter, generate_summary
+    from geminiteacher.coursemaker import Course, ChapterContent, generate_toc, generate_chapter, generate_summary
     
     # Initialize the course with the original content
     course = Course(content=content)
@@ -291,7 +291,7 @@ def create_course_with_progressive_save(
     if llm is None:
         if verbose:
             print("Configuring default Gemini LLM...")
-        from cascadellm.coursemaker import get_default_llm
+        from geminiteacher.coursemaker import get_default_llm
         llm = get_default_llm(temperature)
     
     # Step 1: Generate the table of contents
@@ -459,7 +459,7 @@ def main():
     
     try:
         # Pass the API key directly to avoid authentication issues
-        from cascadellm.coursemaker import configure_gemini_llm
+        from geminiteacher.coursemaker import configure_gemini_llm
         llm = configure_gemini_llm(
             api_key=api_key,
             model_name=model_name, 
@@ -478,7 +478,7 @@ def main():
         
         if args.parallel:
             # Use parallel processing for chapter generation
-            from cascadellm.coursemaker import create_course_parallel
+            from geminiteacher.coursemaker import create_course_parallel
             
             try:
                 course = create_course_parallel(
