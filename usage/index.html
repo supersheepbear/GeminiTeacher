@@ -729,6 +729,7 @@ $env:GOOGLE_API_KEY=&quot;your-api-key-here&quot;
 <hr />
 <h2 id="3-command-line-cli-usage">3. Command-Line (CLI) Usage<a class="headerlink" href="#3-command-line-cli-usage" title="Permanent link">&para;</a></h2>
 <p>For power users and automation, the CLI provides full control over the generation process.</p>
+<p><strong>A Note on Input Files</strong>: The input file can be any text-based format that Python can read. This includes <code>.txt</code>, <code>.md</code>, <code>.rst</code>, code files like <code>.py</code>, or any other file containing plain text.</p>
 <h3 id="method-1-using-a-configyaml-file-best-practice">Method 1: Using a <code>config.yaml</code> File (Best Practice)<a class="headerlink" href="#method-1-using-a-configyaml-file-best-practice" title="Permanent link">&para;</a></h3>
 <p>Create a <code>config.yaml</code> to define your settings, then run:</p>
 <pre><code class="language-bash">uv run python -m geminiteacher.app.generate_course --config config.yaml
@@ -757,7 +758,7 @@ uv run python -m geminiteacher.app.generate_course \
   --max-workers 14 \
   --verbose
 </code></pre>
-<p>For a full list of commands and options, please refer to the <a href="#all-command-line-options">Advanced CLI Options</a> section below.</p>
+<p>For a full list of commands and options, please refer to the expandable section below.</p>
 <hr />
 <h2 id="4-python-api-usage">4. Python API Usage<a class="headerlink" href="#4-python-api-usage" title="Permanent link">&para;</a></h2>
 <p>You can also use GeminiTeacher programmatically in your own Python scripts.</p>
@@ -775,8 +776,8 @@ course = gt.create_course_parallel(
 print(f&quot;Generated {len(course.chapters)} chapters in parallel.&quot;)
 </code></pre>
 <hr />
-<details>
-<summary><b>Advanced CLI Options (Click to Expand)</b></summary>
+<details open>
+<summary><b>View All Command-Line Options</b></summary>
 
 ### All Command-Line Options
 
