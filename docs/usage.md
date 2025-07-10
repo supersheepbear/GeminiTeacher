@@ -83,6 +83,7 @@ Here is the full list of available command-line options. Any option passed as a 
 | `--output-dir`          | `-o`  | `PATH`    | **Required.** Directory where the generated course files will be saved.                                                                  |
 | `--title`               | `-t`  | `TEXT`    | **Required.** The title of your course.                                                                                                  |
 | `--custom-prompt`       | `-p`  | `PATH`    | Optional path to a file containing custom instructions for the AI to follow during generation.                                           |
+| `--model-name`          |       | `TEXT`    | The specific Gemini model to use (e.g., `gemini-1.5-pro`, `gemini-2.5-flash`). Default: `gemini-1.5-pro`.                                    |
 | `--temperature`         |       | `FLOAT`   | Controls the "creativity" or randomness of the AI's output. A value from `0.0` (most predictable) to `1.0` (most creative). Default: `0.2`. |
 | `--max-chapters`        |       | `INTEGER` | The target number of chapters for the course. The final number may be less if the AI deems it appropriate. Default: `10`.                |
 | `--fixed-chapter-count` |       | `FLAG`    | If set, forces the AI to generate exactly the number of chapters specified by `--max-chapters`.                                          |
@@ -129,13 +130,7 @@ uv run python -m geminiteacher.app.generate_course \
 
 **"command not found" error?**
 
-If your shell cannot find the `geminiteacher` command, you can run it directly as a Python module:
-
-```bash
-python -m geminiteacher.app.generate_course --config config.yaml
-```
-
-This happens when your Python scripts directory is not in your system's `PATH`. See the [installation guide](installation.md) for more details.
+This can happen if your Python scripts directory is not in your system's `PATH`. The most reliable way to run the application is always by using `uv run`, as shown in the examples above. See the [installation guide](installation.md) for more details.
 
 **API Key Errors?**
 

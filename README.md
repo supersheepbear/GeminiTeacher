@@ -10,15 +10,33 @@
 - **Full Documentation**: [https://supersheepbear.github.io/GeminiTeacher/](https://supersheepbear.github.io/GeminiTeacher/)
 - **Source Code**: [https://github.com/supersheepbear/GeminiTeacher/](https://github.com/supersheepbear/GeminiTeacher/)
 
-## Quick Start
+## Ways to Use GeminiTeacher
 
-The best way to use GeminiTeacher is with the command-line interface and a `config.yaml` file.
+There are two primary ways to use GeminiTeacher, based on your preference.
 
-### 1. Installation
+| Method | Description | Best For |
+| --- | --- | --- |
+| 🚀 **GUI Application** | A user-friendly graphical interface with all options available. | Users who prefer a visual interface and easy controls. |
+| 💻 **Command-Line (CLI)** | A powerful command-line tool for experts and automation. | Power users, developers, and integration into scripts. |
+
+### Quick Start (GUI)
+
+1.  **Installation**: Follow the [**Installation and Setup Guide**](./docs/installation.md).
+2.  **Launch the App**: Run the following command in your terminal:
+    ```bash
+    uv run geminiteacher-gui
+    ```
+3.  **Generate**: Fill in the fields and click "Generate Course". See the full [**GUI Guide**](./docs/gui.md) for more details.
+
+### Quick Start (CLI)
+
+The command-line interface is best managed with a `config.yaml` file.
+
+#### 1. Installation
 
 First, install the package and set up your API key by following the [**Installation and Setup Guide**](./docs/installation.md).
 
-### 2. Create Your Content
+#### 2. Create Your Content
 
 Create a text file with the raw material for your course. This can be a `.txt`, `.md`, `.rst`, or any other text-based file containing your notes. For example, `my_notes.txt`.
 
@@ -33,7 +51,7 @@ unsupervised learning deals with unlabeled data. Reinforcement learning is about
 agents taking actions in an environment to maximize cumulative reward.
 ```
 
-### 3. Create a Configuration File
+#### 3. Create a Configuration File
 
 Next, create a `config.yaml` to define how you want your course to be generated. It will point to your content file.
 
@@ -52,7 +70,7 @@ parallel:
   enabled: true
 ```
 
-### 4. Run the Generator
+#### 4. Run the Generator
 
 Now, run the command from your terminal:
 

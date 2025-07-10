@@ -15,7 +15,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-from geminiteacher import create_course, configure_gemini_llm, Course
+from geminiteacher import (
+    create_course, 
+    configure_gemini_llm, 
+    Course,
+    generate_toc,
+    generate_chapter,
+    generate_summary
+)
 from geminiteacher.parallel import parallel_generate_chapters
 
 
@@ -259,6 +266,7 @@ def create_course_with_progressive_save(
     course_title: str,
     output_dir: str,
     llm=None,
+    model_name: str = "gemini-1.5-pro",
     temperature: float = 0.0,
     verbose: bool = False,
     max_chapters: int = 10,
@@ -271,193 +279,243 @@ def create_course_with_progressive_save(
 ) -> Course:
     """
     Generate a course with progressive saving of chapters.
-    
-    This function creates a course and saves each chapter as it's generated,
-    providing a more robust approach for long-running generations.
+
+    This function handles the entire workflow:
+    1. Reads content and prompt files if paths are provided.
+    2. Configures the LLM.
+    3. Generates the table of contents.
+    4. Generates chapters (sequentially or in parallel).
+    5. Saves each chapter to a file as it's completed.
+    6. Generates and saves the final course summary.
     
     Parameters
     ----------
     content : str
-        The raw content to transform into a course
+        The raw content for the course, or a path to the content file.
     course_title : str
-        Title of the course
+        Title of the course.
     output_dir : str
-        Directory to save the generated files
-    llm : Optional[BaseLanguageModel], optional
-        Language model to use. If None, a default model will be configured.
+        Directory to save the course files.
+    llm : optional
+        Pre-configured LLM instance. If None, one will be created.
+    model_name : str, optional
+        Name of the Gemini model to use if `llm` is not provided.
     temperature : float, optional
-        Temperature for generation. Default is 0.0.
+        Temperature for generation.
     verbose : bool, optional
-        Whether to print progress messages. Default is False.
+        Enable verbose logging.
     max_chapters : int, optional
-        Maximum number of chapters. Default is 10.
+        Maximum number of chapters.
     fixed_chapter_count : bool, optional
-        Whether to use fixed chapter count. Default is False.
-    custom_prompt : Optional[str], optional
-        Custom prompt instructions. Default is None.
-    max_workers : Optional[int], optional
-        Maximum number of worker processes. If None, uses the default.
+        Generate exactly `max_chapters`.
+    custom_prompt : str, optional
+        Custom prompt instructions, or a path to the prompt file.
+    max_workers : int, optional
+        Number of parallel workers. If > 1, enables parallel mode.
     delay_range : tuple, optional
-        Range (min, max) in seconds for the random delay between task submissions.
-        Default is (0.1, 0.5).
+        Min/max delay for parallel requests.
     max_retries : int, optional
-        Maximum number of retry attempts per chapter. Default is 3.
-    logger : Optional[logging.Logger], optional
-        Logger instance to use. If None, a new logger will be created.
-        
+        Max retries for failed API calls.
+    logger : logging.Logger, optional
+        Logger instance.
+
     Returns
     -------
     Course
-        The generated course object
+        The generated course object.
     """
+    # Configure logger if not provided
     if logger is None:
         logger = logging.getLogger("geminiteacher.app")
-    
-    # Create the course using parallel processing with progressive saving
-    course = create_course(
-        content,
-        llm=llm,
-        temperature=temperature,
-        verbose=verbose,
-        max_chapters=max_chapters,
-        fixed_chapter_count=fixed_chapter_count,
-        custom_prompt=custom_prompt
-    )
-    
-    # Save the course to files
-    save_course_to_files(course_title, course, output_dir)
-    
-    return course
 
+    # If content is a file path, read it
+    if os.path.exists(content):
+        logger.info(f"Reading content from file: {content}")
+        content = read_input_content(content)
+
+    # If custom_prompt is a file path, read it
+    if custom_prompt and os.path.exists(custom_prompt):
+        logger.info(f"Reading custom prompt from file: {custom_prompt}")
+        custom_prompt = read_custom_prompt(custom_prompt)
+
+    # Configure LLM if not provided
+    if llm is None:
+        logger.info(f"Configuring model: {model_name}")
+        llm = configure_gemini_llm(temperature=temperature, model_name=model_name)
+
+    # Generate table of contents
+    logger.info("Generating table of contents...")
+    try:
+        chapter_titles = generate_toc(content, llm=llm, max_chapters=max_chapters, fixed_chapter_count=fixed_chapter_count)
+        
+        # Decide on parallel or sequential processing
+        if max_workers and max_workers > 1:
+            # Parallel processing
+            logger.info(f"Starting parallel chapter generation with {max_workers} workers.")
+            chapters = parallel_generate_chapters(
+                chapter_titles=chapter_titles,
+                content=content,
+                llm=llm,
+                course_title=course_title,
+                output_dir=output_dir,
+                max_workers=max_workers,
+                delay_range=delay_range,
+                max_retries=max_retries,
+                # Do NOT pass the logger here, as it may contain un-picklable GUI handlers.
+                # The worker processes will configure their own logging.
+            )
+        else:
+            # Sequential processing
+            logger.info("Starting sequential chapter generation.")
+            chapters = []
+            for i, title in enumerate(chapter_titles):
+                logger.info(f"Generating chapter {i+1}/{len(chapter_titles)}: {title}")
+                chapter = generate_chapter(title, content, llm, custom_prompt)
+                save_chapter_to_file(course_title, chapter, i, output_dir)
+                chapters.append(chapter)
+
+        # Generate final summary
+        logger.info("Generating final course summary...")
+        summary = generate_summary(content, chapters, llm)
+        
+        # Save summary
+        safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in course_title).replace(" ", "_")
+        summary_filename = f"{safe_title}_summary.md"
+        summary_path = Path(output_dir) / summary_filename
+        with open(summary_path, 'w', encoding='utf-8') as f:
+            f.write(f"# {course_title} - Course Summary\n\n")
+            f.write(f"{summary}\n\n")
+
+        return Course(summary=summary, chapters=chapters, content=content)
+
+    except Exception as e:
+        logger.error(f"Error during course generation pipeline: {e}")
+        # Re-raise the exception to be caught by the GUI worker if needed
+        raise
 
 def main():
     """
-    Main entry point for the course generator application.
+    Main function for the command-line application.
     """
-    parser = argparse.ArgumentParser(description="Generate a structured course from input content.")
-    parser.add_argument("--config", "-c", type=str, default="config.yaml", help="Path to configuration file")
-    parser.add_argument("--input", "-i", type=str, help="Path to input content file")
-    parser.add_argument("--output-dir", "-o", type=str, default="output", help="Directory to save generated course files")
-    parser.add_argument("--title", "-t", type=str, help="Course title")
-    parser.add_argument("--custom-prompt", "-p", type=str, help="Path to custom prompt instructions file")
+    parser = argparse.ArgumentParser(description="Course Generator using GeminiTeacher")
+    
+    # Configuration and Input
+    parser.add_argument("-c", "--config", help="Path to configuration file", default="config.yaml")
+    parser.add_argument("-i", "--input", help="Path to input content file")
+    parser.add_argument("-o", "--output-dir", help="Directory to save generated course files")
+    parser.add_argument("-t", "--title", help="Course title")
+    parser.add_argument("-p", "--custom-prompt", help="Path to custom prompt instructions file")
+    
+    # Model and Generation Settings
+    parser.add_argument("--model-name", help="Name of the Gemini model to use (e.g., 'gemini-1.5-pro')")
     parser.add_argument("--temperature", type=float, help="Temperature for generation (0.0-1.0)")
     parser.add_argument("--max-chapters", type=int, help="Maximum number of chapters")
-    parser.add_argument("--fixed-chapter-count", action="store_true", help="Generate exactly max-chapters chapters")
-    parser.add_argument("--parallel", action="store_true", help="Use parallel processing for chapter generation")
-    parser.add_argument("--max-workers", type=int, help="Maximum number of worker processes for parallel generation")
-    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
-    parser.add_argument("--log-file", type=str, help="Path to log file")
+    parser.add_argument("--fixed-chapter-count", action="store_true", help="Generate exactly max-chapters")
+    
+    # Parallel Processing Settings
+    parser.add_argument("--parallel", action="store_true", help="Use parallel processing")
+    parser.add_argument("--max-workers", type=int, help="Maximum number of worker processes")
+    parser.add_argument("--delay-min", type=float, help="Minimum delay between parallel requests")
+    parser.add_argument("--delay-max", type=float, help="Maximum delay between parallel requests")
+    parser.add_argument("--max-retries", type=int, help="Maximum number of retries for a failed request")
+    
+    # Other
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
+    parser.add_argument("--log-file", help="Path to log file")
     
     args = parser.parse_args()
     
-    # Configure logging
-    logger = configure_logging(args.log_file, args.verbose)
+    # --- Configuration Loading and Merging ---
     
-    # Load configuration (empty dict if default config doesn't exist)
+    # Load config from file
     config = load_config(args.config)
     
-    # Set up environment variables if config exists
-    if config:
-        setup_environment(config)
+    # Merge command-line arguments into config, overriding file values
+    cli_args = {
+        'input': {'path': args.input},
+        'output': {'directory': args.output_dir},
+        'course': {'title': args.title, 'custom_prompt': args.custom_prompt},
+        'api': {'model_name': args.model_name},
+        'generation': {
+            'temperature': args.temperature,
+            'max_chapters': args.max_chapters,
+            'fixed_chapter_count': args.fixed_chapter_count
+        },
+        'parallel': {
+            'enabled': args.parallel,
+            'max_workers': args.max_workers,
+            'delay_min': args.delay_min,
+            'delay_max': args.delay_max,
+            'max_retries': args.max_retries
+        },
+        'logging': {
+            'verbose': args.verbose,
+            'log_file': args.log_file
+        }
+    }
     
-    # Get parameters from command-line arguments or configuration
-    input_path = args.input or config.get('input', {}).get('path')
-    if not input_path:
-        logger.error("Input file path not specified. Use --input to specify an input file.")
-        sys.exit(1)
+    # Deep merge CLI arguments into the loaded config
+    for key, value in cli_args.items():
+        if key not in config:
+            config[key] = {}
+        for sub_key, sub_value in value.items():
+            if sub_value is not None:
+                config[key][sub_key] = sub_value
     
-    output_dir = args.output_dir or config.get('output', {}).get('directory', 'output')
-    course_title = args.title or config.get('course', {}).get('title', 'Untitled Course')
+    # --- Parameter Extraction ---
     
-    # Read custom prompt if specified
-    custom_prompt = None
-    if args.custom_prompt:
-        custom_prompt = read_custom_prompt(args.custom_prompt)
-    elif config.get('course', {}).get('custom_prompt'):
-        custom_prompt_path = config['course']['custom_prompt']
-        if custom_prompt_path:
-            custom_prompt = read_custom_prompt(custom_prompt_path)
+    # Extract parameters with fallbacks
+    api_config = config.get('api', {})
+    input_config = config.get('input', {})
+    output_config = config.get('output', {})
+    course_config = config.get('course', {})
+    gen_config = config.get('generation', {})
+    parallel_config = config.get('parallel', {})
+    log_config = config.get('logging', {})
+
+    # Setup environment (e.g., API key)
+    setup_environment(config)
     
-    # Get generation parameters
-    temperature = args.temperature if args.temperature is not None else config.get('generation', {}).get('temperature', 0.0)
-    max_chapters = args.max_chapters or config.get('generation', {}).get('max_chapters', 10)
-    fixed_chapter_count = args.fixed_chapter_count or config.get('generation', {}).get('fixed_chapter_count', False)
-    
-    # Parallel processing parameters
-    use_parallel = args.parallel or config.get('parallel', {}).get('enabled', False)
-    max_workers = args.max_workers or config.get('parallel', {}).get('max_workers')
-    delay_min = config.get('parallel', {}).get('delay_min', 0.1)
-    delay_max = config.get('parallel', {}).get('delay_max', 0.5)
-    delay_range = (delay_min, delay_max)
-    max_retries = config.get('parallel', {}).get('max_retries', 3)
-    
-    # Read input content
-    logger.info(f"Reading input content from {input_path}")
-    content = read_input_content(input_path)
-    
-    # Configure the LLM
-    logger.info("Configuring language model")
-    llm = configure_gemini_llm(
-        model_name=config.get('api', {}).get('model_name', "gemini-1.5-pro"),
-        temperature=temperature
+    # Configure logging
+    logger = configure_logging(
+        log_file=log_config.get('log_file'), 
+        verbose=log_config.get('verbose', False)
     )
+
+    # Validate required parameters
+    input_path = input_config.get('path')
+    output_dir = output_config.get('directory')
+    course_title = course_config.get('title')
     
-    # Generate the course
-    logger.info(f"Generating course with title: {course_title}")
-    logger.info(f"Using temperature: {temperature}")
-    logger.info(f"Maximum chapters: {max_chapters}")
-    logger.info(f"Fixed chapter count: {fixed_chapter_count}")
-    logger.info(f"Custom prompt: {'Yes' if custom_prompt else 'No'}")
-    
-    start_time = datetime.now()
-    
-    if use_parallel:
-        logger.info("Using parallel processing for chapter generation")
-        logger.info(f"Max workers: {max_workers or 'Default'}")
-        logger.info(f"Delay range: {delay_range}")
-        logger.info(f"Max retries: {max_retries}")
+    if not all([input_path, output_dir, course_title]):
+        logger.error("Error: --input, --output-dir, and --title are required parameters.")
+        sys.exit(1)
         
-        course = create_course_with_progressive_save(
-            content=content,
-            course_title=course_title,
-            output_dir=output_dir,
-            llm=llm,
-            temperature=temperature,
-            verbose=args.verbose,
-            max_chapters=max_chapters,
-            fixed_chapter_count=fixed_chapter_count,
-            custom_prompt=custom_prompt,
-            max_workers=max_workers,
-            delay_range=delay_range,
-            max_retries=max_retries,
-            logger=logger
-        )
-    else:
-        logger.info("Using sequential processing for chapter generation")
-        
-        course = create_course_with_progressive_save(
-            content=content,
-            course_title=course_title,
-            output_dir=output_dir,
-            llm=llm,
-            temperature=temperature,
-            verbose=args.verbose,
-            max_chapters=max_chapters,
-            fixed_chapter_count=fixed_chapter_count,
-            custom_prompt=custom_prompt,
-            logger=logger
-        )
+    # --- Course Creation ---
     
-    end_time = datetime.now()
-    duration = end_time - start_time
+    logger.info(f"Starting course generation for '{course_title}'")
     
-    # Print summary
-    logger.info(f"Course generation completed in {duration}")
-    logger.info(f"Generated {len(course.chapters)} chapters")
-    logger.info(f"Output saved to {output_dir}")
+    # Determine max_workers based on parallel flag
+    max_workers_val = parallel_config.get('max_workers') if parallel_config.get('enabled') else None
     
-    return 0
+    create_course_with_progressive_save(
+        content=input_path,
+        course_title=course_title,
+        output_dir=output_dir,
+        model_name=api_config.get('model_name', 'gemini-1.5-pro'),
+        temperature=gen_config.get('temperature', 0.2),
+        verbose=log_config.get('verbose', False),
+        max_chapters=gen_config.get('max_chapters', 10),
+        fixed_chapter_count=gen_config.get('fixed_chapter_count', False),
+        custom_prompt=course_config.get('custom_prompt'),
+        max_workers=max_workers_val,
+        delay_range=(parallel_config.get('delay_min', 0.2), parallel_config.get('delay_max', 0.8)),
+        max_retries=parallel_config.get('max_retries', 3),
+        logger=logger
+    )
+
+    logger.info(f"Course '{course_title}' generated successfully in '{output_dir}'")
 
 
 if __name__ == "__main__":
-    sys.exit(main()) 
+    main() 

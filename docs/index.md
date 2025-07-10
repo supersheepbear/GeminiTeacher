@@ -9,18 +9,23 @@
 
 ## Getting Started
 
-To get started, follow these two simple steps:
+To get started, choose your preferred method:
 
-1.  **[Installation and Setup](installation.md)**: A step-by-step guide to install the package and configure your Google API key.
-2.  **[Usage Guide](usage.md)**: A comprehensive walkthrough of how to generate courses using both the command-line interface and the Python API.
+| Method | Description |
+| --- | --- |
+| 🚀 **[GUI Guide](gui.md)** | The recommended path for most users. A user-friendly graphical interface with all options available. |
+| 💻 **[Usage Guide](usage.md)** | For power users and developers. A comprehensive guide to the command-line and Python API. |
 
 ## Key Documentation Sections
 
 - **[Installation Guide](installation.md)**  
-  *Everything you need to get up and running.*
+  *Everything you need to get up and running before using either the GUI or CLI.*
 
-- **[Usage Guide](usage.md)**  
-  *Detailed instructions for CLI and Python API usage, from basic to advanced.*
+- **[GUI Guide](gui.md)**  
+  *A complete walkthrough of the graphical user interface.*
+
+- **[Usage Guide (CLI & API)](usage.md)**  
+  *Detailed instructions for the command-line interface and programmatic Python API.*
 
 - **[Modules Overview](modules.md)**  
   *A technical deep-dive into the package's architecture and core components.*

@@ -22,11 +22,7 @@ uv run python -m geminiteacher.app.generate_course --help
 
 If you see the help message, the installation was successful.
 
-If the command is not found, your Python scripts directory might not be in your system's PATH. In that case, you can always run the tool using Python's module syntax:
-
-```bash
-python -m geminiteacher.app.generate_course --help
-```
+If the command is not found, this is normal. The most reliable way to run the application is always by using `uv run`, as shown above and throughout the documentation.
 
 ## 2. Set Up Your Google API Key
 

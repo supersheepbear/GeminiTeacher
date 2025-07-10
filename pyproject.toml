@@ -28,6 +28,7 @@ dependencies = [
     "pydantic>=2.0.0",
     "markitdown[all]",
     "pyyaml>=6.0",
+    "PySide6>=6.0",
 ]
 
 [project.urls]
@@ -37,6 +38,7 @@ Documentation = "https://supersheepbear.github.io/GeminiTeacher/"
 
 [project.scripts]
 geminiteacher = "geminiteacher.app.generate_course:main"
+geminiteacher-gui = "geminiteacher.gui.app:main"
 
 [dependency-groups]
 dev = [
