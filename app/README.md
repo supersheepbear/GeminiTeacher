@@ -8,6 +8,8 @@ This application uses the CascadeLLM coursemaker module to generate structured e
 - **Process various file formats** including PDF, DOCX, PPTX, and more, by automatically converting them to Markdown
 - Two chapter generation modes: adaptive (based on content complexity) or fixed count
 - **Progressive saving**: Each chapter is saved as soon as it's generated, allowing you to review content while generation continues
+- **Parallel processing**: Generate multiple chapters concurrently to significantly reduce overall processing time
+- **Robust error handling**: Automatically retry failed API calls with exponential backoff
 - Configure API keys and model settings via YAML configuration
 - Output course content as Markdown files
 - Customize model parameters like temperature
@@ -57,6 +59,11 @@ uv run python app/generate_course.py app/sample.pdf --title "My PDF Course"
 uv run python app/generate_course.py app/sample_input.txt --title "AI Fundamentals"
 ```
 
+**Example with parallel processing:**
+```bash
+uv run python app/generate_course.py app/sample_input.txt --title "AI Fundamentals" --parallel --max-workers 4
+```
+
 ### Command Line Arguments
 
 - `input`: Path to the input content file (required)
@@ -67,6 +74,14 @@ uv run python app/generate_course.py app/sample_input.txt --title "AI Fundamenta
 - `--fixed-chapters`: If set, generates exactly `--max-chapters` chapters instead of adapting based on content complexity.
 - `--custom-prompt`: Path to a file containing custom instructions for chapter generation.
 
+#### Parallel Processing Arguments
+
+- `--parallel`: Enable parallel processing for chapter generation
+- `--max-workers`: Maximum number of worker processes (default: auto-detected based on CPU cores)
+- `--min-delay`: Minimum delay between API requests in seconds (default: 0.1)
+- `--max-delay`: Maximum delay between API requests in seconds (default: 0.5)
+- `--max-retries`: Maximum number of retry attempts per chapter (default: 3)
+
 ### Chapter Generation Modes
 
 The application supports two modes for chapter generation:
@@ -74,6 +89,14 @@ The application supports two modes for chapter generation:
 1.  **Adaptive Mode (Default)**: The AI analyzes the content and determines the optimal number of chapters (between 1 and `--max-chapters`) based on its complexity.
 
 2.  **Fixed Mode**: The AI generates exactly the number of chapters specified by `--max-chapters`.
+
+### Processing Modes
+
+The application supports two processing modes:
+
+1. **Sequential Processing (Default)**: Chapters are generated one after another. This mode uses less memory but takes longer.
+
+2. **Parallel Processing**: Multiple chapters are generated concurrently, significantly reducing overall processing time. Enable with the `--parallel` flag.
 
 ### Custom Prompt Instructions
 
@@ -105,6 +128,9 @@ uv run python app/generate_course.py app/sample_input.txt --title "Introduction 
 
 # Using custom prompt instructions
 uv run python app/generate_course.py app/sample_input.txt --title "Machine Learning" --custom-prompt custom_instructions.txt
+
+# Parallel processing with custom settings
+uv run python app/generate_course.py app/sample_input.txt --title "Machine Learning" --parallel --max-workers 4 --min-delay 0.2 --max-delay 1.0 --max-retries 3
 ```
 
 ## Output
