@@ -1,6 +1,6 @@
 [project]
 name = "geminiteacher"
-version = "0.1.0"
+version = "1.0.0"
 description = "An educational content generation toolkit powered by Google's Gemini LLM"
 authors = [{ name = "Sheepbear", email = "yxiong@umich.edu" }]
 readme = "README.md"
