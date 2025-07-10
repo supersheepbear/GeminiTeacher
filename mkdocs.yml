@@ -11,6 +11,7 @@ nav:
   - Home: index.md
   - Modules: modules.md
   - Course Generator: coursemaker.md
+  - Parallel Processing: parallel.md
 plugins:
   - search
   - mkdocstrings:

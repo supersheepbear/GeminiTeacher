@@ -28,6 +28,17 @@ Key capabilities of the Course Generator include:
 - **Fixed Chapter Count Mode**: Generate exactly the specified number of chapters when needed
 - **Custom Prompt Instructions**: Customize how the AI generates chapter explanations by providing additional instructions
 - **Structured Output**: Generate well-organized course materials with summaries, detailed explanations, and extension thoughts
+- **Parallel Processing**: Generate chapters concurrently for significantly faster course creation
+- **Robust Error Handling**: Automatically retry failed API calls with exponential backoff
+
+### Parallel Processing
+
+The `parallel` module provides utilities for efficient parallel execution with API rate limiting:
+
+- **Controlled Concurrency**: Configure the number of parallel workers to match your system resources
+- **Rate Limit Management**: Add randomized delays between API requests to avoid hitting rate limits
+- **Robust Error Handling**: Automatically retry failed requests with exponential backoff
+- **Ordered Results**: Ensure outputs are returned in the same order as inputs, regardless of completion time
 
 ## Installation
 

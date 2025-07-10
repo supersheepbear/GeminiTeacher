@@ -74,6 +74,34 @@ print(f"Generated {len(course.chapters)} chapters")
 print(f"Summary: {course.summary[:100]}...")
 ```
 
+### Parallel Processing
+
+For faster course generation, you can use parallel processing to generate chapters concurrently:
+
+```python
+from cascadellm.coursemaker import create_course_parallel, configure_gemini_llm
+
+# Load content from a file or string
+with open("your_content.txt", "r") as f:
+    raw_content = f.read()
+
+# Configure the Gemini API
+llm = configure_gemini_llm()
+
+# Generate a structured course with parallel processing
+course = create_course_parallel(
+    raw_content, 
+    llm=llm,
+    max_workers=4,              # Number of parallel workers
+    delay_range=(0.2, 0.8),     # Random delay between API requests
+    max_retries=3               # Retry attempts for failed API calls
+)
+
+# The course object contains all generated components
+print(f"Generated {len(course.chapters)} chapters in parallel")
+print(f"Summary: {course.summary[:100]}...")
+```
+
 ### Accessing Course Components
 
 The course generator produces structured data that you can easily access:
@@ -116,6 +144,34 @@ summary = generate_summary(raw_content, chapters, llm=llm)
 print(summary)
 ```
 
+### Using Parallel Components
+
+For more control over the parallel processing:
+
+```python
+from cascadellm.coursemaker import generate_toc, generate_summary, configure_gemini_llm
+from cascadellm.parallel import parallel_generate_chapters
+
+# Configure the Gemini API
+llm = configure_gemini_llm()
+
+# Generate table of contents
+chapter_titles = generate_toc(raw_content, llm=llm)
+
+# Generate chapters in parallel with custom parameters
+chapters = parallel_generate_chapters(
+    chapter_titles=chapter_titles,
+    content=raw_content,
+    llm=llm,
+    max_workers=4,
+    delay_range=(0.2, 0.8),
+    max_retries=3
+)
+
+# Generate a summary from the chapters
+summary = generate_summary(raw_content, chapters, llm=llm)
+```
+
 ### Customizing Gemini Parameters
 
 You can customize the Gemini API parameters:
@@ -137,6 +193,8 @@ course = create_course(raw_content, llm=llm)
 
 ::: cascadellm.coursemaker.create_course
 
+::: cascadellm.coursemaker.create_course_parallel
+
 ::: cascadellm.coursemaker.generate_toc
 
 ::: cascadellm.coursemaker.generate_chapter
@@ -144,6 +202,14 @@ course = create_course(raw_content, llm=llm)
 ::: cascadellm.coursemaker.generate_summary
 
 ::: cascadellm.coursemaker.configure_gemini_llm
+
+### Parallel Processing
+
+::: cascadellm.parallel.parallel_generate_chapters
+
+::: cascadellm.parallel.generate_chapter_with_retry
+
+::: cascadellm.parallel.parallel_map_with_delay
 
 ### Data Models
 
@@ -166,10 +232,12 @@ course = create_course(raw_content, llm=llm)
 - The current implementation is designed for text content only.
 - All output is in simplified Chinese.
 - For production use, a valid Google API key must be provided.
+- API rate limits may affect parallel processing performance.
 
 ## Future Enhancements
 
 Future versions may include:
 - Support for multiple languages
 - Image and multimedia content handling
-- Customizable output formats 
+- Customizable output formats
+- Adaptive rate limiting for optimal parallel processing 
