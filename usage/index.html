@@ -427,6 +427,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#all-command-line-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      All Command-Line Options
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -660,6 +669,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#all-command-line-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      All Command-Line Options
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -758,7 +776,91 @@ uv run python -m geminiteacher.app.generate_course \
   --max-workers 14 \
   --verbose
 </code></pre>
-<p>For a full list of commands and options, please refer to the expandable section below.</p>
+<hr />
+<h3 id="all-command-line-options">All Command-Line Options<a class="headerlink" href="#all-command-line-options" title="Permanent link">&para;</a></h3>
+<p>Here is the full list of available command-line options.</p>
+<ul>
+<li>
+<p><strong><code>--config</code></strong> (Alias: <strong><code>-c</code></strong>)<br />
+<em>Type</em>: <code>PATH</code><br />
+    Path to the YAML configuration file. If used, all other options can be defined here.</p>
+</li>
+<li>
+<p><strong><code>--input</code></strong> (Alias: <strong><code>-i</code></strong>)<br />
+<em>Type</em>: <code>PATH</code><br />
+<strong>Required.</strong> Path to the input content file (e.g., <code>.txt</code>, <code>.md</code>).</p>
+</li>
+<li>
+<p><strong><code>--output-dir</code></strong> (Alias: <strong><code>-o</code></strong>)<br />
+<em>Type</em>: <code>PATH</code><br />
+<strong>Required.</strong> Directory where the generated course files will be saved.</p>
+</li>
+<li>
+<p><strong><code>--title</code></strong> (Alias: <strong><code>-t</code></strong>)<br />
+<em>Type</em>: <code>TEXT</code><br />
+<strong>Required.</strong> The title of your course.</p>
+</li>
+<li>
+<p><strong><code>--custom-prompt</code></strong> (Alias: <strong><code>-p</code></strong>)<br />
+<em>Type</em>: <code>PATH</code><br />
+    Optional path to a file containing custom instructions for the AI to follow during generation.</p>
+</li>
+<li>
+<p><strong><code>--model-name</code></strong><br />
+<em>Type</em>: <code>TEXT</code><br />
+    The specific Gemini model to use (e.g., <code>gemini-1.5-pro</code>, <code>gemini-2.5-flash</code>). Default: <code>gemini-1.5-pro</code>.</p>
+</li>
+<li>
+<p><strong><code>--temperature</code></strong><br />
+<em>Type</em>: <code>FLOAT</code><br />
+    Controls the "creativity" or randomness of the AI's output. A value from <code>0.0</code> (most predictable) to <code>1.0</code> (most creative). Default: <code>0.2</code>.</p>
+</li>
+<li>
+<p><strong><code>--max-chapters</code></strong><br />
+<em>Type</em>: <code>INTEGER</code><br />
+    The target number of chapters for the course. The final number may be less if the AI deems it appropriate. Default: <code>10</code>.</p>
+</li>
+<li>
+<p><strong><code>--fixed-chapter-count</code></strong><br />
+<em>Type</em>: <code>FLAG</code><br />
+    If set, forces the AI to generate exactly the number of chapters specified by <code>--max-chapters</code>.</p>
+</li>
+<li>
+<p><strong><code>--parallel</code></strong><br />
+<em>Type</em>: <code>FLAG</code><br />
+    If set, enables parallel processing to generate chapters simultaneously for a significant speed boost.</p>
+</li>
+<li>
+<p><strong><code>--max-workers</code></strong><br />
+<em>Type</em>: <code>INTEGER</code><br />
+    When using <code>--parallel</code>, this sets the number of concurrent processes. Defaults to the number of CPU cores on your machine.</p>
+</li>
+<li>
+<p><strong><code>--delay-min</code></strong><br />
+<em>Type</em>: <code>FLOAT</code><br />
+    The minimum random delay (in seconds) between parallel API requests to avoid rate limiting. Default: <code>0.2</code>.</p>
+</li>
+<li>
+<p><strong><code>--delay-max</code></strong><br />
+<em>Type</em>: <code>FLOAT</code><br />
+    The maximum random delay (in seconds) between parallel API requests. Default: <code>0.8</code>.</p>
+</li>
+<li>
+<p><strong><code>--max-retries</code></strong><br />
+<em>Type</em>: <code>INTEGER</code><br />
+    The maximum number of times to retry a failed API call for a chapter before giving up. Default: <code>3</code>.</p>
+</li>
+<li>
+<p><strong><code>--verbose</code></strong> (Alias: <strong><code>-v</code></strong>)<br />
+<em>Type</em>: <code>FLAG</code><br />
+    Enable verbose output for detailed real-time progress logging, which is very helpful for debugging.</p>
+</li>
+<li>
+<p><strong><code>--log-file</code></strong><br />
+<em>Type</em>: <code>PATH</code><br />
+    Optional path to a file where all log output will be saved.</p>
+</li>
+</ul>
 <hr />
 <h2 id="4-python-api-usage">4. Python API Usage<a class="headerlink" href="#4-python-api-usage" title="Permanent link">&para;</a></h2>
 <p>You can also use GeminiTeacher programmatically in your own Python scripts.</p>
@@ -776,78 +878,6 @@ course = gt.create_course_parallel(
 print(f&quot;Generated {len(course.chapters)} chapters in parallel.&quot;)
 </code></pre>
 <hr />
-<details open>
-<summary><b>View All Command-Line Options</b></summary>
-
-### All Command-Line Options
-
-Here is the full list of available command-line options.
-
-*   **`--config`** (Alias: **`-c`**)  
-    *Type*: `PATH`  
-    Path to the YAML configuration file. If used, all other options can be defined here.
-
-*   **`--input`** (Alias: **`-i`**)  
-    *Type*: `PATH`  
-    **Required.** Path to the input content file (e.g., `.txt`, `.md`).
-
-*   **`--output-dir`** (Alias: **`-o`**)  
-    *Type*: `PATH`  
-    **Required.** Directory where the generated course files will be saved.
-
-*   **`--title`** (Alias: **`-t`**)  
-    *Type*: `TEXT`  
-    **Required.** The title of your course.
-
-*   **`--custom-prompt`** (Alias: **`-p`**)  
-    *Type*: `PATH`  
-    Optional path to a file containing custom instructions for the AI to follow during generation.
-
-*   **`--model-name`**  
-    *Type*: `TEXT`  
-    The specific Gemini model to use (e.g., `gemini-1.5-pro`, `gemini-2.5-flash`). Default: `gemini-1.5-pro`.
-
-*   **`--temperature`**  
-    *Type*: `FLOAT`  
-    Controls the "creativity" or randomness of the AI's output. A value from `0.0` (most predictable) to `1.0` (most creative). Default: `0.2`.
-
-*   **`--max-chapters`**  
-    *Type*: `INTEGER`  
-    The target number of chapters for the course. The final number may be less if the AI deems it appropriate. Default: `10`.
-
-*   **`--fixed-chapter-count`**  
-    *Type*: `FLAG`  
-    If set, forces the AI to generate exactly the number of chapters specified by `--max-chapters`.
-
-*   **`--parallel`**  
-    *Type*: `FLAG`  
-    If set, enables parallel processing to generate chapters simultaneously for a significant speed boost.
-
-*   **`--max-workers`**  
-    *Type*: `INTEGER`  
-    When using `--parallel`, this sets the number of concurrent processes. Defaults to the number of CPU cores on your machine.
-
-*   **`--delay-min`**  
-    *Type*: `FLOAT`  
-    The minimum random delay (in seconds) between parallel API requests to avoid rate limiting. Default: `0.2`.
-
-*   **`--delay-max`**  
-    *Type*: `FLOAT`  
-    The maximum random delay (in seconds) between parallel API requests. Default: `0.8`.
-
-*   **`--max-retries`**  
-    *Type*: `INTEGER`  
-    The maximum number of times to retry a failed API call for a chapter before giving up. Default: `3`.
-
-*   **`--verbose`** (Alias: **`-v`**)  
-    *Type*: `FLAG`  
-    Enable verbose output for detailed real-time progress logging, which is very helpful for debugging.
-
-*   **`--log-file`**  
-    *Type*: `PATH`  
-    Optional path to a file where all log output will be saved.
-
-</details>
 
 
 
