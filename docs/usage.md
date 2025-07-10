@@ -6,13 +6,38 @@ This guide provides a complete walkthrough for using GeminiTeacher, from install
 
 First, let's get the application installed and configured.
 
-### Install the Package
+### Installing GeminiTeacher
 
-Install GeminiTeacher directly from the Python Package Index (PyPI):
+#### For Users (from PyPI)
+
+Install GeminiTeacher directly from the Python Package Index (PyPI). This is the simplest and recommended method for most users.
 
 ```bash
+# Using pip (standard Python package manager)
 pip install geminiteacher
+
+# Or if you prefer uv (faster package manager)
+uv pip install geminiteacher
 ```
+
+#### For Developers (from Source)
+
+If you want to contribute to the project or need the very latest (unreleased) version, you should install from source.
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/supersheepbear/GeminiTeacher.git
+    cd GeminiTeacher
+    ```
+
+2.  **Install dependencies:**
+    ```bash
+    # Using uv (recommended for development)
+    uv pip install -e .
+    
+    # Or install with all development dependencies
+    uv pip install -e ".[dev]"
+    ```
 
 ### Set Up Your Google API Key
 
@@ -27,6 +52,9 @@ export GOOGLE_API_KEY="your-api-key-here"
 
 # For Windows (PowerShell)
 $env:GOOGLE_API_KEY="your-api-key-here"
+
+# For Windows (Command Prompt)
+set GOOGLE_API_KEY=your-api-key-here
 ```
 
 ---
@@ -40,12 +68,16 @@ The graphical user interface is the easiest way to use GeminiTeacher.
 After installation, run the following command in your terminal:
 
 ```bash
-uv run geminiteacher-gui
+# If installed via pip
+geminiteacher-gui
+
+# If that doesn't work, try the more reliable method
+python -m geminiteacher.gui.app
 ```
 
 ### Using the Interface
 
-The GUI provides simple fields for all options.
+The GUI provides simple fields for all options:
 - **API Key & Model**: Paste your API key and specify the Gemini model to use (defaults to `gemini-2.5-flash`).
 - **File Paths**: Use the "Browse..." buttons to select your input file and output directory.
 - **Settings Caching**: Your settings are automatically saved when you close the app and reloaded next time.
@@ -63,22 +95,81 @@ For power users and automation, the CLI provides full control over the generatio
 
 Create a `config.yaml` to define your settings, then run:
 ```bash
-uv run python -m geminiteacher.app.generate_course --config config.yaml
+# Most reliable method
+python -m geminiteacher.app.generate_course --config config.yaml
+
+# If the package is properly installed in your PATH
+geminiteacher --config config.yaml
 ```
 
-Here is an example `config.yaml`:
+This is the recommended approach as it keeps your settings organized and version-controllable. Any command-line flag you use will override the settings in the `config.yaml` file.
+
+Here is a comprehensive `config.yaml` example with all available options explained.
+
 ```yaml
+# =======================================================
+# Comprehensive GeminiTeacher Configuration
+# =======================================================
+
 # --- Input/Output Settings ---
 input:
-  path: "input/content.txt"
+  # Required. Path to your raw content file. This can be any text-based format
+  # that Python can read, such as .txt, .md, .rst, .py, etc.
+  path: "input/my_raw_notes.txt"
+
 output:
-  directory: "output/MyFirstCourse"
+  # Required. Directory where the generated course files will be saved.
+  directory: "output/MyAwesomeCourse"
+  # Optional. If provided, all logs will be saved to this file.
+  log_file: "logs/course_generation.log"
 
 # --- Course Settings ---
 course:
-  title: "Introduction to Artificial Intelligence"
+  # Required. The title of your course.
+  title: "Advanced Python Programming"
+  # Optional. Path to a file with custom instructions for the AI.
+  # This is very useful for guiding the tone, style, and content focus.
+  custom_prompt: "prompts/formal_academic_prompt.txt"
 
-# ... and so on for all other options.
+# --- Generation Settings ---
+generation:
+  # The specific Gemini model to use (e.g., 'gemini-1.5-pro', 'gemini-2.5-flash').
+  # Default: 'gemini-1.5-pro'
+  model_name: 'gemini-1.5-pro-latest'
+  # Controls the "creativity" of the AI. Lower is more predictable. (0.0 - 1.0)
+  # Default: 0.2
+  temperature: 0.25
+  # The target number of chapters for the course.
+  # Default: 10
+  max_chapters: 15
+  # If true, the AI will generate exactly `max_chapters`. If false, the AI
+  # may choose to generate fewer chapters if it deems it appropriate.
+  # Default: false
+  fixed_chapter_count: false
+
+# --- Performance & Reliability Settings ---
+parallel:
+  # Enable parallel processing to generate chapters simultaneously.
+  # This provides a major speed boost for large documents.
+  # Default: false
+  enabled: true
+  # Number of parallel processes to run.
+  # Default: The number of CPU cores on your machine.
+  max_workers: 8
+  # The minimum random delay (in seconds) between parallel API requests
+  # to avoid rate limiting. Default: 0.2
+  delay_min: 0.5
+  # The maximum random delay (in seconds). Default: 0.8
+  delay_max: 1.5
+  # The maximum number of times to retry a failed API call for a chapter.
+  # Default: 3
+  max_retries: 5
+
+# --- General Settings ---
+# Enable verbose output for detailed real-time progress logging.
+# This is very helpful for debugging.
+# Default: false
+verbose: true
 ```
 
 ### Method 2: Using Command-Line Flags
@@ -87,7 +178,7 @@ Pass arguments directly for one-off tasks.
 
 ```bash
 # Example for a large, important document
-uv run python -m geminiteacher.app.generate_course \
+python -m geminiteacher.app.generate_course \
   --input "input/xianxingdaishu.md" \
   --output-dir "output/linear_algebra_course" \
   --title "Linear Algebra Fundamentals" \
@@ -96,32 +187,7 @@ uv run python -m geminiteacher.app.generate_course \
   --verbose
 ```
 
-For a full list of commands and options, please refer to the expandable section below.
-
 ---
-
-## 4. Python API Usage
-
-You can also use GeminiTeacher programmatically in your own Python scripts.
-
-```python
-import geminiteacher as gt
-
-# Generate a course with parallel processing
-course = gt.create_course_parallel(
-    content="path/to/your/content.txt",
-    course_title="My Programmatic Course",
-    output_dir="courses_output",
-    max_chapters=10,
-    max_workers=4
-)
-
-print(f"Generated {len(course.chapters)} chapters in parallel.")
-```
-
----
-<details open>
-<summary><b>View All Command-Line Options</b></summary>
 
 ### All Command-Line Options
 
@@ -191,4 +257,25 @@ Here is the full list of available command-line options.
     *Type*: `PATH`  
     Optional path to a file where all log output will be saved.
 
-</details> 
+---
+
+## 4. Python API Usage
+
+You can also use GeminiTeacher programmatically in your own Python scripts.
+
+```python
+import geminiteacher as gt
+
+# Generate a course with parallel processing
+course = gt.create_course_parallel(
+    content="path/to/your/content.txt",
+    course_title="My Programmatic Course",
+    output_dir="courses_output",
+    max_chapters=10,
+    max_workers=4
+)
+
+print(f"Generated {len(course.chapters)} chapters in parallel.")
+```
+
+--- 

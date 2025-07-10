@@ -1,4 +1,4 @@
-"""This module contains the logic for the automated course generation system."""
+make"""This module contains the logic for the automated course generation system."""
 from typing import List, Dict, Any, Optional, Union
 
 from langchain.chains import LLMChain

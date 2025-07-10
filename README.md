@@ -2,69 +2,25 @@
 
 Turn any text-based document (notes, articles, books) into a structured, multi-chapter online course with a single command.
 
-**[Full Documentation Site](https://supersheepbear.github.io/GeminiTeacher/)**
+[![PyPI version](https://badge.fury.io/py/geminiteacher.svg)](https://badge.fury.io/py/geminiteacher)
+[![License](https://img.shields.io/github/license/supersheepbear/GeminiTeacher)](https://github.com/supersheepbear/GeminiTeacher/blob/main/LICENSE)
 
-GeminiTeacher acts like an AI agent, using a sequence of cascading prompts with Google's Gemini models to perform a comprehensive analysis of your content. It intelligently outlines a table of contents, then generates a detailed chapter and a final summary for each part, effectively creating a full book from your raw material.
+**[Full Documentation Site](https://yxiong.org/GeminiTeacher/)**
 
-### Quick Start (GUI)
+## What It Does
 
-1.  **Installation**: All setup instructions are in the new [**Usage Guide**](./docs/usage.md).
-2.  **Launch the App**: Run the following command in your terminal:
-    ```bash
-    uv run geminiteacher-gui
-    ```
-3.  **Generate**: Fill in the fields and click "Generate Course". See the full [**Usage Guide**](./docs/usage.md) for more details.
+GeminiTeacher acts like an AI agent, using a sequence of cascading prompts with Google's Gemini models to perform a comprehensive analysis of your content. First, it intelligently outlines a table of contents with a user-defined number of chapters. It then generates a detailed chapter for each topic in the outline, plus a final course summary, effectively creating a complete, multi-chapter book from your raw material.
 
-### Quick Start (CLI)
+## How to Use
 
-The command-line interface is best managed with a `config.yaml` file. Full instructions, including setup, are in the [**Usage Guide**](./docs/usage.md).
+For complete installation and usage instructions, please visit our comprehensive documentation site:
 
-#### 1. Create a Configuration File
-
-Create a `config.yaml` to define your settings.
-
-```yaml
-# config.yaml
-input:
-  path: "my_notes.txt"
-output:
-  directory: "output/machine_learning_course"
-course:
-  title: "Introduction to Machine Learning"
-generation:
-  max_chapters: 5
-  fixed_chapter_count: true
-parallel:
-  enabled: true
-```
-
-#### 2. Run the Generator
-
-Now, run the command from your terminal:
-
-```bash
-uv run python -m geminiteacher.app.generate_course --config config.yaml
-```
-
-The tool will create the specified output directory and fill it with structured markdown files for each chapter and a course summary.
-
-## Key Features
-
-- **Automated Course Structuring**: Intelligently organizes raw text into logical, lesson-based chapters.
-- **Config-Driven Workflow**: Use a simple YAML file to control all aspects of course generation.
-- **Parallel Processing**: Generates chapters concurrently to dramatically reduce creation time.
-- **GUI & CLI**: Use the user-friendly graphical interface or the powerful command-line tool.
-- **Customizable AI Behavior**: Use custom prompts and temperature controls to tailor the output to your needs.
-- **Robust and Reliable**: Includes progressive saving and automatic retries for network errors.
-
-## Learn More
-
-For detailed instructions on all features, including how to use **custom instruction files** to guide the AI's tone and style, please see the full [**Usage Guide**](./docs/usage.md).
+**➡️ [Usage Guide: https://yxiong.org/GeminiTeacher/usage/](https://yxiong.org/GeminiTeacher/usage/)**
 
 ## Contributing
 
-Contributions are welcome! Please check out our [contribution guidelines](CONTRIBUTING.md).
+Contributions are welcome! Please feel free to submit a pull request or open an issue.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License.
