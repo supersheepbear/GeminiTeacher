@@ -14,9 +14,8 @@ Create a `config.yaml` file to manage all your settings in one place. This is th
 
 1.  **Create a `config.yaml` file:**
 
+    Here is an example `config.yaml`:
     ```yaml
-    # config.yaml
-
     # --- Input/Output Settings ---
     input:
       # Path to your raw content file. This can be any text-based format
@@ -77,20 +76,54 @@ uv run python -m geminiteacher.app.generate_course --input content.txt --custom-
 
 Here is the full list of available command-line options. Any option passed as a flag will override the corresponding value in a `config.yaml` file.
 
-| Option                  | Argument        | Description                                                 |
-| ----------------------- | --------------- | ----------------------------------------------------------- |
-| `--config`, `-c`        | `PATH`          | Path to the YAML configuration file.                        |
-| `--input`, `-i`         | `PATH`          | Path to the input content file.                             |
-| `--output-dir`, `-o`    | `PATH`          | Directory to save generated course files.                   |
-| `--title`, `-t`         | `TEXT`          | Course title.                                               |
-| `--custom-prompt`, `-p` | `PATH`          | Path to a custom prompt instructions file.                  |
-| `--temperature`         | `FLOAT`         | Temperature for generation (0.0-1.0).                       |
-| `--max-chapters`        | `INTEGER`       | Maximum number of chapters to generate.                     |
-| `--fixed-chapter-count` | *(flag)*        | If set, generates exactly `max-chapters`.                   |
-| `--parallel`            | *(flag)*        | If set, use parallel processing for chapter generation.     |
-| `--max-workers`         | `INTEGER`       | Max worker processes for parallel generation.               |
-| `--verbose`, `-v`       | *(flag)*        | Enable verbose output for detailed progress logging.        |
-| `--log-file`            | `PATH`          | Optional path to a file to save logs.                       |
+| Option                  | Alias | Type      | Description                                                                                                                              |
+| ----------------------- | ----- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `--config`              | `-c`  | `PATH`    | Path to the YAML configuration file. If used, all other options can be defined here.                                                     |
+| `--input`               | `-i`  | `PATH`    | **Required.** Path to the input content file (e.g., `.txt`, `.md`).                                                                       |
+| `--output-dir`          | `-o`  | `PATH`    | **Required.** Directory where the generated course files will be saved.                                                                  |
+| `--title`               | `-t`  | `TEXT`    | **Required.** The title of your course.                                                                                                  |
+| `--custom-prompt`       | `-p`  | `PATH`    | Optional path to a file containing custom instructions for the AI to follow during generation.                                           |
+| `--temperature`         |       | `FLOAT`   | Controls the "creativity" or randomness of the AI's output. A value from `0.0` (most predictable) to `1.0` (most creative). Default: `0.2`. |
+| `--max-chapters`        |       | `INTEGER` | The target number of chapters for the course. The final number may be less if the AI deems it appropriate. Default: `10`.                |
+| `--fixed-chapter-count` |       | `FLAG`    | If set, forces the AI to generate exactly the number of chapters specified by `--max-chapters`.                                          |
+| `--parallel`            |       | `FLAG`    | If set, enables parallel processing to generate chapters simultaneously for a significant speed boost.                                   |
+| `--max-workers`         |       | `INTEGER` | When using `--parallel`, this sets the number of concurrent processes. Defaults to the number of CPU cores on your machine.              |
+| `--delay-min`           |       | `FLOAT`   | The minimum random delay (in seconds) between parallel API requests to avoid rate limiting. Default: `0.2`.                              |
+| `--delay-max`           |       | `FLOAT`   | The maximum random delay (in seconds) between parallel API requests. Default: `0.8`.                                                     |
+| `--max-retries`         |       | `INTEGER` | The maximum number of times to retry a failed API call for a chapter before giving up. Default: `3`.                                     |
+| `--verbose`             | `-v`  | `FLAG`    | Enable verbose output for detailed real-time progress logging, which is very helpful for debugging.                                    |
+| `--log-file`            |       | `PATH`    | Optional path to a file where all log output will be saved.                                                                              |
+
+### Advanced "Power User" Example
+
+Here is an example of a command that uses multiple flags for fine-grained control over the generation process. This is useful for large, important documents where you want to maximize speed and quality.
+
+```bash
+uv run python -m geminiteacher.app.generate_course \
+  --input "input/xianxingdaishu.md" \
+  --output-dir "output/linear_algebra_course" \
+  --title "Linear Algebra Fundamentals" \
+  --custom-prompt "input/xianxingdaishu_prompt.txt" \
+  --max-chapters 10 \
+  --fixed-chapter-count \
+  --parallel \
+  --max-workers 14 \
+  --delay-min 0.2 \
+  --delay-max 1.0 \
+  --max-retries 5 \
+  --verbose
+```
+
+**What this command does:**
+- **`--input "input/xianxingdaishu.md"`**: Specifies the source material.
+- **`--output-dir "output/linear_algebra_course"`**: Sets the destination for the course files.
+- **`--title "Linear Algebra Fundamentals"`**: Gives the course a clear title.
+- **`--custom-prompt "input/xianxingdaishu_prompt.txt"`**: Uses a dedicated prompt file to guide the AI's tone and style.
+- **`--max-chapters 10 --fixed-chapter-count`**: Instructs the AI to generate exactly 10 chapters.
+- **`--parallel --max-workers 14`**: Enables high-speed generation using 14 parallel processes.
+- **`--delay-min 0.2 --delay-max 1.0`**: Adds a random delay of 0.2 to 1.0 seconds between API calls to prevent overwhelming the server.
+- **`--max-retries 5`**: If an API call for a chapter fails, it will be retried up to 5 times.
+- **`--verbose`**: Prints detailed logs to the console so you can monitor the progress in real-time.
 
 ### Troubleshooting the CLI
 
