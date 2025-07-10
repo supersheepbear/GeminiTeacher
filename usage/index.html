@@ -560,7 +560,8 @@
 <h1 id="configyaml">config.yaml<a class="headerlink" href="#configyaml" title="Permanent link">&para;</a></h1>
 <h1 id="-inputoutput-settings-">--- Input/Output Settings ---<a class="headerlink" href="#-inputoutput-settings-" title="Permanent link">&para;</a></h1>
 <p>input:
-  # Path to your raw content file (e.g., a text file with your notes).
+  # Path to your raw content file. This can be any text-based format
+  # that Python can read, such as .txt, .md, .rst, .py, etc.
   path: "input/content.txt"
 output:
   # Directory where the generated course files will be saved.
@@ -591,19 +592,19 @@ output:
 <p><strong>Run the command:</strong></p>
 <p>Simply point the CLI to your configuration file.</p>
 <p><code>bash
-geminiteacher --config config.yaml</code></p>
+uv run python -m geminiteacher.app.generate_course --config config.yaml</code></p>
 </li>
 </ol>
 <h3 id="method-2-using-command-line-flags">Method 2: Using Command-Line Flags<a class="headerlink" href="#method-2-using-command-line-flags" title="Permanent link">&para;</a></h3>
 <p>You can also control the generation process directly with command-line arguments. These are useful for quick, one-off tasks.</p>
 <pre><code class="language-bash"># Basic usage with a text file
-geminiteacher --input content.txt --output-dir courses --title &quot;Machine Learning Basics&quot;
+uv run python -m geminiteacher.app.generate_course --input content.txt --output-dir courses --title &quot;Machine Learning Basics&quot;
 
 # Enable parallel processing for faster generation
-geminiteacher --input content.txt --parallel --max-workers 4
+uv run python -m geminiteacher.app.generate_course --input content.txt --parallel --max-workers 4
 
 # Use a custom prompt file and set the temperature
-geminiteacher --input content.txt --custom-prompt prompts.txt --temperature 0.3
+uv run python -m geminiteacher.app.generate_course --input content.txt --custom-prompt prompts.txt --temperature 0.3
 </code></pre>
 <h3 id="all-command-line-options">All Command-Line Options<a class="headerlink" href="#all-command-line-options" title="Permanent link">&para;</a></h3>
 <p>Here is the full list of available command-line options. Any option passed as a flag will override the corresponding value in a <code>config.yaml</code> file.</p>

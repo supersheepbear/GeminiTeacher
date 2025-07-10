@@ -639,7 +639,7 @@
 <p>This command installs the package along with its command-line interface.</p>
 <h3 id="verifying-the-installation">Verifying the Installation<a class="headerlink" href="#verifying-the-installation" title="Permanent link">&para;</a></h3>
 <p>To verify that the command-line tool is properly installed, you can run:</p>
-<pre><code class="language-bash">geminiteacher --help
+<pre><code class="language-bash">uv run python -m geminiteacher.app.generate_course --help
 </code></pre>
 <p>If you see the help message, the installation was successful.</p>
 <p>If the command is not found, your Python scripts directory might not be in your system's PATH. In that case, you can always run the tool using Python's module syntax:</p>
