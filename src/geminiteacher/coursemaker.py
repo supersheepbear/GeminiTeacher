@@ -774,3 +774,121 @@ def create_course_parallel(
             print("Course generation complete!")
     
     return course 
+
+
+def create_course_cascade(
+    content: str, 
+    llm: Optional[BaseLanguageModel] = None, 
+    temperature: float = 0.0, 
+    verbose: bool = False, 
+    max_chapters: int = 10, 
+    fixed_chapter_count: bool = False, 
+    custom_prompt: Optional[str] = None
+) -> Course:
+    """
+    Create a course with cascade chapter generation.
+    
+    This function creates a course by generating chapters sequentially, where each chapter
+    generation is informed by all previously generated chapters. This ensures that each
+    new chapter builds upon the knowledge presented in previous chapters, creating a more
+    cohesive and interconnected learning experience.
+    
+    Parameters
+    ----------
+    content : str
+        The raw content to transform into a course
+    llm : Optional[BaseLanguageModel], optional
+        Language model to use. If None, a default model will be configured.
+    temperature : float, optional
+        Temperature for generation. Default is 0.0.
+    verbose : bool, optional
+        Whether to print progress messages. Default is False.
+    max_chapters : int, optional
+        Maximum number of chapters. Default is 10.
+    fixed_chapter_count : bool, optional
+        Whether to use fixed chapter count. Default is False.
+    custom_prompt : Optional[str], optional
+        Custom prompt instructions. Default is None.
+        
+    Returns
+    -------
+    Course
+        The generated course object
+    """
+    # Initialize the course with the original content
+    course = Course(content=content)
+    
+    # If no LLM is provided, configure Gemini
+    if llm is None:
+        if verbose:
+            print("Configuring default Gemini LLM...")
+        llm = get_default_llm(temperature)
+    
+    # Step 1: Generate the table of contents
+    if verbose:
+        print(f"Generating table of contents (max {max_chapters} chapters)...")
+        if fixed_chapter_count:
+            print(f"Using fixed chapter count mode: exactly {max_chapters} chapters")
+        if custom_prompt:
+            print("Using custom prompt for chapter generation")
+    
+    chapter_titles = generate_toc(
+        content, 
+        llm=llm, 
+        temperature=temperature, 
+        max_chapters=max_chapters,
+        fixed_chapter_count=fixed_chapter_count
+    )
+    
+    if verbose:
+        print(f"Generated {len(chapter_titles)} chapter titles")
+    
+    # Step 2: Generate content for each chapter sequentially in cascade mode
+    chapters = []
+    if chapter_titles:
+        if verbose:
+            print("Generating chapters in cascade mode...")
+        
+        # Start with the original content
+        current_context = content
+        
+        # Generate each chapter sequentially
+        for i, chapter_title in enumerate(chapter_titles):
+            if verbose:
+                print(f"Generating chapter {i+1}/{len(chapter_titles)}: {chapter_title}")
+            
+            # Generate the current chapter using the accumulated context
+            chapter = generate_chapter(
+                chapter_title, 
+                current_context, 
+                llm=llm, 
+                temperature=temperature,
+                custom_prompt=custom_prompt
+            )
+            
+            # Add the chapter to the list
+            chapters.append(chapter)
+            
+            # Update the context for the next chapter by appending this chapter's content
+            # Format the chapter content to be added to the context
+            chapter_content = f"""
+# {chapter.title}
+{chapter.summary}
+
+{chapter.explanation}
+
+{chapter.extension}
+"""
+            # Append the new chapter content to the existing context
+            current_context = f"{current_context}\n\n{chapter_content}"
+        
+        course.chapters = chapters
+        
+        # Step 3: Generate the course summary
+        if verbose:
+            print("Generating course summary...")
+        course.summary = generate_summary(content, chapters, llm=llm, temperature=temperature)
+        if verbose:
+            print("Course generation complete!")
+    
+    return course 

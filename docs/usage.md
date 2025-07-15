@@ -146,6 +146,13 @@ generation:
   # may choose to generate fewer chapters if it deems it appropriate.
   # Default: false
   fixed_chapter_count: false
+  # Generation mode: "sequential", "parallel", or "cascade".
+  # - sequential: Generate chapters one after another (default)
+  # - parallel: Generate chapters simultaneously for faster processing
+  # - cascade: Generate chapters sequentially, where each new chapter builds upon
+  #   the content of all previously generated chapters for better continuity
+  # Default: "sequential"
+  mode: "cascade"
 
 # --- Performance & Reliability Settings ---
 parallel:
@@ -184,6 +191,16 @@ python -m geminiteacher.app.generate_course \
   --title "Linear Algebra Fundamentals" \
   --parallel \
   --max-workers 14 \
+  --verbose
+```
+
+```bash
+# Example using cascade mode for better chapter continuity
+python -m geminiteacher.app.generate_course \
+  --input "input/novel_draft.md" \
+  --output-dir "output/novel_course" \
+  --title "Creative Writing: Novel Structure" \
+  --mode cascade \
   --verbose
 ```
 
@@ -229,9 +246,16 @@ Here is the full list of available command-line options.
     *Type*: `FLAG`  
     If set, forces the AI to generate exactly the number of chapters specified by `--max-chapters`.
 
+*   **`--mode`**  
+    *Type*: `TEXT`  
+    Generation mode: `sequential`, `parallel`, or `cascade`. Default: `sequential`.
+    - `sequential`: Generate chapters one after another
+    - `parallel`: Generate chapters simultaneously for faster processing
+    - `cascade`: Generate chapters sequentially, where each new chapter builds upon the content of all previously generated chapters for better continuity
+
 *   **`--parallel`**  
     *Type*: `FLAG`  
-    If set, enables parallel processing to generate chapters simultaneously for a significant speed boost.
+    If set, enables parallel processing to generate chapters simultaneously for a significant speed boost. This is equivalent to `--mode parallel` and is kept for backward compatibility.
 
 *   **`--max-workers`**  
     *Type*: `INTEGER`  
@@ -276,6 +300,49 @@ course = gt.create_course_parallel(
 )
 
 print(f"Generated {len(course.chapters)} chapters in parallel.")
+
+# Generate a course with cascade mode for better continuity between chapters
+course = gt.create_course_cascade(
+    content="path/to/your/content.txt",
+    course_title="My Progressive Course",
+    output_dir="courses_output",
+    max_chapters=10
+)
+
+print(f"Generated {len(course.chapters)} chapters in cascade mode.")
 ```
+
+---
+
+## 5. Generation Modes Explained
+
+GeminiTeacher offers three different generation modes, each with its own advantages:
+
+### Sequential Mode (Default)
+
+In sequential mode, chapters are generated one after another, but each chapter is created independently based only on the original content. This mode is:
+
+- **Balanced**: Offers a good mix of speed and quality
+- **Consistent**: Each chapter maintains the same relationship to the source material
+- **Ideal for**: Most general-purpose course generation tasks
+
+### Parallel Mode
+
+In parallel mode, multiple chapters are generated simultaneously using multiple processes. This mode is:
+
+- **Fast**: Can be 3-10x faster than sequential mode, depending on your CPU and API rate limits
+- **Resource-intensive**: Uses more CPU cores and makes more API calls concurrently
+- **Ideal for**: Large documents or when you need results quickly
+
+### Cascade Mode
+
+In cascade mode, chapters are generated sequentially, but with a key difference: each new chapter's generation is informed by all previously generated chapters. This mode is:
+
+- **Coherent**: Creates a more connected narrative flow between chapters
+- **Progressive**: Later chapters can build upon concepts introduced in earlier ones
+- **Slower**: Takes longer than sequential mode as each chapter must wait for previous ones
+- **Ideal for**: Narrative content, complex subjects where continuity matters, or when you want the AI to develop ideas progressively
+
+Choose the mode that best fits your specific needs and content type.
 
 --- 

@@ -459,7 +459,7 @@ def parallel_generate_chapters(
     
     # Get API key from the LLM if provided or environment
     api_key = None
-    model_name = "gemini-1.5-pro"
+    model_name = "gemini-2.5-flash"
     
     if llm is not None:
         # Try to extract API key and model name from the provided LLM

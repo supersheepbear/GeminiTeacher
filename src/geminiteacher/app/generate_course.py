@@ -15,13 +15,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-from geminiteacher import (
+from geminiteacher.coursemaker import (
     create_course, 
     configure_gemini_llm, 
     Course,
     generate_toc,
     generate_chapter,
-    generate_summary
+    generate_summary,
+    create_course_cascade
 )
 from geminiteacher.parallel import parallel_generate_chapters
 
@@ -275,50 +276,49 @@ def create_course_with_progressive_save(
     max_workers: Optional[int] = None,
     delay_range: tuple = (0.1, 0.5),
     max_retries: int = 3,
+    mode: str = "sequential",
     logger=None
 ) -> Course:
     """
-    Generate a course with progressive saving of chapters.
-
-    This function handles the entire workflow:
-    1. Reads content and prompt files if paths are provided.
-    2. Configures the LLM.
-    3. Generates the table of contents.
-    4. Generates chapters (sequentially or in parallel).
-    5. Saves each chapter to a file as it's completed.
-    6. Generates and saves the final course summary.
+    Create a course and save each chapter as it's generated.
+    
+    This function orchestrates the entire course generation process,
+    saving each chapter to a file as it's completed.
     
     Parameters
     ----------
     content : str
-        The raw content for the course, or a path to the content file.
+        The raw content to transform into a course, or a path to a file containing the content
     course_title : str
-        Title of the course.
+        The title of the course
     output_dir : str
-        Directory to save the course files.
-    llm : optional
-        Pre-configured LLM instance. If None, one will be created.
+        Directory to save the course files
+    llm : BaseLanguageModel, optional
+        Language model to use. If None, a default model will be configured.
     model_name : str, optional
-        Name of the Gemini model to use if `llm` is not provided.
+        Name of the Gemini model to use. Default is "gemini-1.5-pro".
     temperature : float, optional
-        Temperature for generation.
+        Temperature for generation. Default is 0.0.
     verbose : bool, optional
-        Enable verbose logging.
+        Whether to print progress messages. Default is False.
     max_chapters : int, optional
-        Maximum number of chapters.
+        Maximum number of chapters. Default is 10.
     fixed_chapter_count : bool, optional
-        Generate exactly `max_chapters`.
+        Whether to use fixed chapter count. Default is False.
     custom_prompt : str, optional
-        Custom prompt instructions, or a path to the prompt file.
+        Custom prompt instructions, or a path to a file containing custom prompt instructions.
     max_workers : int, optional
-        Number of parallel workers. If > 1, enables parallel mode.
+        Maximum number of worker processes. If None, uses sequential processing.
     delay_range : tuple, optional
-        Min/max delay for parallel requests.
+        Range (min, max) in seconds for the random delay between task submissions.
+        Default is (0.1, 0.5).
     max_retries : int, optional
-        Max retries for failed API calls.
+        Maximum number of retry attempts per chapter. Default is 3.
+    mode : str, optional
+        Generation mode: "sequential", "parallel", or "cascade". Default is "sequential".
     logger : logging.Logger, optional
-        Logger instance.
-
+        Logger instance to use. If None, a new logger will be configured.
+    
     Returns
     -------
     Course
@@ -343,13 +343,43 @@ def create_course_with_progressive_save(
         logger.info(f"Configuring model: {model_name}")
         llm = configure_gemini_llm(temperature=temperature, model_name=model_name)
 
+    # Check if we're using cascade mode
+    if mode == "cascade":
+        logger.info("Starting course generation in cascade mode.")
+        course = create_course_cascade(
+            content=content,
+            llm=llm,
+            temperature=temperature,
+            verbose=verbose,
+            max_chapters=max_chapters,
+            fixed_chapter_count=fixed_chapter_count,
+            custom_prompt=custom_prompt
+        )
+        
+        # Save the chapters to files
+        logger.info("Saving chapters to files...")
+        for i, chapter in enumerate(course.chapters):
+            save_chapter_to_file(course_title, chapter, i, output_dir)
+            
+        # Save summary
+        logger.info("Saving course summary...")
+        safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in course_title).replace(" ", "_")
+        summary_filename = f"{safe_title}_summary.md"
+        summary_path = Path(output_dir) / summary_filename
+        with open(summary_path, 'w', encoding='utf-8') as f:
+            f.write(f"# {course_title} - Course Summary\n\n")
+            f.write(f"{course.summary}\n\n")
+            
+        return course
+    
+    # For sequential or parallel mode, use the existing logic
     # Generate table of contents
     logger.info("Generating table of contents...")
     try:
         chapter_titles = generate_toc(content, llm=llm, max_chapters=max_chapters, fixed_chapter_count=fixed_chapter_count)
         
         # Decide on parallel or sequential processing
-        if max_workers and max_workers > 1:
+        if max_workers and max_workers > 1 and mode == "parallel":
             # Parallel processing
             logger.info(f"Starting parallel chapter generation with {max_workers} workers.")
             chapters = parallel_generate_chapters(
@@ -412,8 +442,12 @@ def main():
     parser.add_argument("--max-chapters", type=int, help="Maximum number of chapters")
     parser.add_argument("--fixed-chapter-count", action="store_true", help="Generate exactly max-chapters")
     
+    # Generation Mode
+    parser.add_argument("--mode", choices=["sequential", "parallel", "cascade"], default="sequential",
+                      help="Generation mode: sequential, parallel, or cascade")
+    
     # Parallel Processing Settings
-    parser.add_argument("--parallel", action="store_true", help="Use parallel processing")
+    parser.add_argument("--parallel", action="store_true", help="Use parallel processing (deprecated, use --mode=parallel instead)")
     parser.add_argument("--max-workers", type=int, help="Maximum number of worker processes")
     parser.add_argument("--delay-min", type=float, help="Minimum delay between parallel requests")
     parser.add_argument("--delay-max", type=float, help="Maximum delay between parallel requests")
@@ -439,10 +473,11 @@ def main():
         'generation': {
             'temperature': args.temperature,
             'max_chapters': args.max_chapters,
-            'fixed_chapter_count': args.fixed_chapter_count
+            'fixed_chapter_count': args.fixed_chapter_count,
+            'mode': args.mode
         },
         'parallel': {
-            'enabled': args.parallel,
+            'enabled': args.parallel or args.mode == "parallel",
             'max_workers': args.max_workers,
             'delay_min': args.delay_min,
             'delay_max': args.delay_max,
@@ -495,8 +530,11 @@ def main():
     
     logger.info(f"Starting course generation for '{course_title}'")
     
-    # Determine max_workers based on parallel flag
+    # Determine max_workers based on parallel flag and mode
     max_workers_val = parallel_config.get('max_workers') if parallel_config.get('enabled') else None
+    
+    # Get generation mode
+    generation_mode = gen_config.get('mode', 'sequential')
     
     create_course_with_progressive_save(
         content=input_path,
@@ -511,6 +549,7 @@ def main():
         max_workers=max_workers_val,
         delay_range=(parallel_config.get('delay_min', 0.2), parallel_config.get('delay_max', 0.8)),
         max_retries=parallel_config.get('max_retries', 3),
+        mode=generation_mode,
         logger=logger
     )
 

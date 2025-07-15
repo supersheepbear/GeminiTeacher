@@ -16,7 +16,8 @@ from geminiteacher.coursemaker import (
     Course,
     configure_gemini_llm,
     get_default_llm,
-    create_course_parallel
+    create_course_parallel,
+    create_course_cascade
 )
 
 
@@ -433,25 +434,30 @@ def test_generate_summary_with_explicit_llm(mock_llm_chain):
 
 
 @patch('geminiteacher.coursemaker.get_default_llm')
-@patch('geminiteacher.coursemaker.LLMChain')
-def test_generate_summary_handles_empty_chapters(mock_llm_chain, mock_get_default_llm):
+@patch('geminiteacher.coursemaker.generate_toc')
+@patch('geminiteacher.coursemaker.generate_summary')
+def test_create_course_handles_empty_chapters(mock_generate_summary, mock_generate_toc, mock_get_default_llm):
     """Test that generate_summary handles empty chapters list."""
     # Arrange
     mock_llm = MagicMock()
     mock_get_default_llm.return_value = mock_llm
     
-    mock_chain_instance = MagicMock()
-    mock_llm_chain.return_value = mock_chain_instance
-    mock_chain_instance.invoke.return_value = {"text": "Empty course summary"}
+    # Mock TOC generation to return an empty list
+    mock_generate_toc.return_value = []
     
     # Act
-    result = generate_summary("Test content", [], llm=None)
+    course = create_course("Test content")
     
     # Assert
-    assert result == "Empty course summary"
+    assert isinstance(course, Course)
+    assert course.content == "Test content"
+    assert len(course.chapters) == 0
+    assert course.summary == ""
+    
+    # Verify the correct calls were made
     mock_get_default_llm.assert_called_once()
-    mock_llm_chain.assert_called_once()
-    mock_chain_instance.invoke.assert_called_once()
+    mock_generate_toc.assert_called_once()
+    mock_generate_summary.assert_not_called()  # Should not be called with empty chapters
 
 
 @patch('geminiteacher.coursemaker.get_default_llm')
@@ -851,3 +857,145 @@ def test_create_course_parallel_handles_empty_toc(
     mock_generate_toc.assert_called_once()
     mock_parallel_generate_chapters.assert_not_called()  # Should not be called with empty TOC
     mock_generate_summary.assert_not_called()  # Should not be called with empty chapters 
+
+
+@patch('geminiteacher.coursemaker.get_default_llm')
+@patch('geminiteacher.coursemaker.generate_toc')
+@patch('geminiteacher.coursemaker.generate_chapter')
+@patch('geminiteacher.coursemaker.generate_summary')
+def test_create_course_cascade(
+    mock_generate_summary, mock_generate_chapter, mock_generate_toc, mock_get_default_llm
+):
+    """Test that create_course_cascade orchestrates all steps in cascade mode."""
+    # Arrange
+    mock_llm = MagicMock()
+    mock_get_default_llm.return_value = mock_llm
+    
+    # Mock TOC generation
+    mock_generate_toc.return_value = ["Chapter 1", "Chapter 2", "Chapter 3"]
+    
+    # Mock chapter generation
+    chapter1 = ChapterContent(title="Chapter 1", summary="Summary 1", explanation="Explanation 1")
+    chapter2 = ChapterContent(title="Chapter 2", summary="Summary 2", explanation="Explanation 2")
+    chapter3 = ChapterContent(title="Chapter 3", summary="Summary 3", explanation="Explanation 3")
+    
+    # Set up the mock to return different chapters based on input
+    def mock_generate_chapter_side_effect(chapter_title, content, **kwargs):
+        if chapter_title == "Chapter 1":
+            return chapter1
+        elif chapter_title == "Chapter 2":
+            # For Chapter 2, verify that content includes Chapter 1's content
+            assert "Summary 1" in content
+            assert "Explanation 1" in content
+            return chapter2
+        elif chapter_title == "Chapter 3":
+            # For Chapter 3, verify that content includes both Chapter 1 and 2's content
+            assert "Summary 1" in content
+            assert "Explanation 1" in content
+            assert "Summary 2" in content
+            assert "Explanation 2" in content
+            return chapter3
+        return None
+    
+    mock_generate_chapter.side_effect = mock_generate_chapter_side_effect
+    
+    # Mock summary generation
+    mock_generate_summary.return_value = "Course summary"
+    
+    # Test content
+    content = "This is the original content"
+    
+    # Act
+    course = create_course_cascade(content, verbose=True)
+    
+    # Assert
+    assert isinstance(course, Course)
+    assert course.content == content
+    assert len(course.chapters) == 3
+    assert course.chapters[0] == chapter1
+    assert course.chapters[1] == chapter2
+    assert course.chapters[2] == chapter3
+    assert course.summary == "Course summary"
+    
+    # Verify the calls
+    mock_get_default_llm.assert_called_once_with(0.0)
+    mock_generate_toc.assert_called_once_with(
+        content, llm=mock_llm, temperature=0.0, max_chapters=10, fixed_chapter_count=False
+    )
+    
+    # Verify generate_chapter was called sequentially with updated content
+    assert mock_generate_chapter.call_count == 3
+    
+    # First call should use original content
+    first_call = mock_generate_chapter.call_args_list[0]
+    assert first_call[0][0] == "Chapter 1"  # chapter_title
+    assert first_call[0][1] == content  # content
+    
+    # Verify summary was generated
+    mock_generate_summary.assert_called_once_with(content, [chapter1, chapter2, chapter3], llm=mock_llm, temperature=0.0)
+
+
+@patch('geminiteacher.coursemaker.get_default_llm')
+@patch('geminiteacher.coursemaker.generate_toc')
+@patch('geminiteacher.coursemaker.generate_chapter')
+@patch('geminiteacher.coursemaker.generate_summary')
+def test_create_course_cascade_with_custom_prompt(
+    mock_generate_summary, mock_generate_chapter, mock_generate_toc, mock_get_default_llm
+):
+    """Test that create_course_cascade passes custom_prompt to generate_chapter."""
+    # Arrange
+    mock_llm = MagicMock()
+    mock_get_default_llm.return_value = mock_llm
+    
+    # Mock TOC generation
+    mock_generate_toc.return_value = ["Chapter 1"]
+    
+    # Mock chapter generation
+    mock_generate_chapter.return_value = ChapterContent(title="Chapter 1", summary="Summary 1")
+    
+    # Mock summary generation
+    mock_generate_summary.return_value = "Course summary"
+    
+    # Test content and custom prompt
+    content = "This is the original content"
+    custom_prompt = "This is a custom prompt"
+    
+    # Act
+    course = create_course_cascade(content, custom_prompt=custom_prompt)
+    
+    # Assert
+    assert isinstance(course, Course)
+    
+    # Verify generate_chapter was called with the custom prompt
+    mock_generate_chapter.assert_called_once()
+    assert mock_generate_chapter.call_args[1]['custom_prompt'] == custom_prompt
+
+
+@patch('geminiteacher.coursemaker.get_default_llm')
+@patch('geminiteacher.coursemaker.generate_toc')
+@patch('geminiteacher.coursemaker.generate_summary')
+def test_create_course_cascade_handles_empty_toc(
+    mock_generate_summary, mock_generate_toc, mock_get_default_llm
+):
+    """Test that create_course_cascade handles an empty TOC gracefully."""
+    # Arrange
+    mock_llm = MagicMock()
+    mock_get_default_llm.return_value = mock_llm
+    
+    # Mock TOC generation to return an empty list
+    mock_generate_toc.return_value = []
+    
+    # Test content
+    content = "This is the original content"
+    
+    # Act
+    course = create_course_cascade(content)
+    
+    # Assert
+    assert isinstance(course, Course)
+    assert course.content == content
+    assert len(course.chapters) == 0
+    assert course.summary == ""
+    
+    # Verify generate_summary was not called
+    mock_generate_summary.assert_not_called() 

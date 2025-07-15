@@ -11,6 +11,12 @@ Turn any text-based document (notes, articles, books) into a structured, multi-c
 
 GeminiTeacher acts like an AI agent, using a sequence of cascading prompts with Google's Gemini models to perform a comprehensive analysis of your content. First, it intelligently outlines a table of contents with a user-defined number of chapters. It then generates a detailed chapter for each topic in the outline, plus a final course summary, effectively creating a complete, multi-chapter book from your raw material.
 
+GeminiTeacher offers three different generation modes to suit your needs:
+
+- **Sequential Mode (Default)**: Generates chapters one after another, balancing speed and quality.
+- **Parallel Mode**: Generates multiple chapters simultaneously for faster processing.
+- **Cascade Mode**: Generates chapters sequentially, where each new chapter builds upon all previously generated chapters, creating a more coherent narrative flow.
+
 ## How to Use
 
 For complete installation and usage instructions, please visit our comprehensive documentation site:

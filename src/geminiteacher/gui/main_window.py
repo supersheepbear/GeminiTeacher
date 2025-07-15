@@ -132,17 +132,21 @@ class MainWindow(QMainWindow):
 
         # Course Settings
         self.title_edit = QLineEdit("My Awesome Course")
-        self.max_chapters_spin = QSpinBox(minimum=1, maximum=100, value=10)
+        self.max_chapters_spin = QSpinBox(minimum=1, maximum=200, value=10)
         self.fixed_chapter_check = QCheckBox("Generate Exact Number of Chapters")
 
         # Generation Settings
         self.temperature_spin = QDoubleSpinBox(minimum=0.0, maximum=1.0, value=0.2, singleStep=0.1)
         
+        # Generation Mode
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItems(["Sequential", "Parallel", "Cascade"])
+        
         # Parallel Settings
         self.parallel_check = QCheckBox("Enable Parallel Processing")
         self.max_workers_spin = QSpinBox(minimum=1, maximum=32, value=4)
-        self.delay_min_spin = QDoubleSpinBox(minimum=0.0, maximum=10.0, value=0.2, singleStep=0.1)
-        self.delay_max_spin = QDoubleSpinBox(minimum=0.0, maximum=10.0, value=0.8, singleStep=0.1)
+        self.delay_min_spin = QDoubleSpinBox(minimum=0.0, maximum=120.0, value=10, singleStep=5)
+        self.delay_max_spin = QDoubleSpinBox(minimum=0.0, maximum=120.0, value=20, singleStep=5)
         self.max_retries_spin = QSpinBox(minimum=0, maximum=10, value=3)
 
         # Other controls
@@ -164,6 +168,7 @@ class MainWindow(QMainWindow):
         form_layout.addRow("Max Chapters:", self.max_chapters_spin)
         form_layout.addRow(self.fixed_chapter_check)
         form_layout.addRow("Temperature:", self.temperature_spin)
+        form_layout.addRow("Generation Mode:", self.mode_combo)
         
         # Parallel processing group
         self.layout.addLayout(form_layout)
@@ -200,6 +205,34 @@ class MainWindow(QMainWindow):
     def create_connections(self):
         """Connect widget signals to slots."""
         self.generate_btn.clicked.connect(self.start_generation)
+        self.mode_combo.currentIndexChanged.connect(self.update_ui_for_mode)
+        self.parallel_check.toggled.connect(self.update_ui_for_parallel)
+
+    def update_ui_for_mode(self):
+        """Update UI elements based on the selected generation mode."""
+        current_mode = self.mode_combo.currentText().lower()
+        
+        # If cascade mode is selected, disable parallel processing
+        if current_mode == "cascade":
+            self.parallel_check.setChecked(False)
+            self.parallel_check.setEnabled(False)
+        else:
+            self.parallel_check.setEnabled(True)
+            
+        # If parallel mode is selected, enable parallel processing
+        if current_mode == "parallel":
+            self.parallel_check.setChecked(True)
+            
+        # Update UI for parallel settings
+        self.update_ui_for_parallel()
+            
+    def update_ui_for_parallel(self):
+        """Update UI elements based on parallel processing checkbox."""
+        is_parallel = self.parallel_check.isChecked()
+        self.max_workers_spin.setEnabled(is_parallel)
+        self.delay_min_spin.setEnabled(is_parallel)
+        self.delay_max_spin.setEnabled(is_parallel)
+        self.max_retries_spin.setEnabled(is_parallel)
 
     def browse_file(self, line_edit):
         """Open a file dialog and set the line edit's text."""
@@ -230,6 +263,7 @@ class MainWindow(QMainWindow):
         settings.setValue("maxChapters", self.max_chapters_spin.value())
         settings.setValue("fixedChapter", self.fixed_chapter_check.isChecked())
         settings.setValue("temperature", self.temperature_spin.value())
+        settings.setValue("mode", self.mode_combo.currentText().lower())
         settings.setValue("parallel", self.parallel_check.isChecked())
         settings.setValue("maxWorkers", self.max_workers_spin.value())
         settings.setValue("delayMin", self.delay_min_spin.value())
@@ -249,13 +283,25 @@ class MainWindow(QMainWindow):
         self.max_chapters_spin.setValue(int(settings.value("maxChapters", 10)))
         self.fixed_chapter_check.setChecked(settings.value("fixedChapter", "false").lower() == 'true')
         self.temperature_spin.setValue(float(settings.value("temperature", 0.2)))
+        
+        # Load generation mode
+        mode = settings.value("mode", "sequential").lower()
+        mode_index = 0  # Default to sequential
+        if mode == "parallel":
+            mode_index = 1
+        elif mode == "cascade":
+            mode_index = 2
+        self.mode_combo.setCurrentIndex(mode_index)
+        
         self.parallel_check.setChecked(settings.value("parallel", "true").lower() == 'true')
         self.max_workers_spin.setValue(int(settings.value("maxWorkers", 4)))
         self.delay_min_spin.setValue(float(settings.value("delayMin", 0.2)))
         self.delay_max_spin.setValue(float(settings.value("delayMax", 0.8)))
         self.max_retries_spin.setValue(int(settings.value("maxRetries", 3)))
         self.verbose_check.setChecked(settings.value("verbose", "true").lower() == 'true')
-
+        
+        # Update UI based on selected mode
+        self.update_ui_for_mode()
 
     def start_generation(self):
         """Prepare and start the course generation in a worker thread."""
@@ -271,6 +317,14 @@ class MainWindow(QMainWindow):
         self.progress_bar.setValue(0)
         self.log_box.clear()
 
+        # Get the selected generation mode
+        mode = self.mode_combo.currentText().lower()
+        
+        # Determine max_workers based on mode and parallel checkbox
+        max_workers = None
+        if mode == "parallel" or (mode == "sequential" and self.parallel_check.isChecked()):
+            max_workers = self.max_workers_spin.value()
+
         # Gather parameters from the GUI to be passed to the core function.
         # The core function now handles file reading and logic.
         params = {
@@ -282,10 +336,11 @@ class MainWindow(QMainWindow):
             "max_chapters": self.max_chapters_spin.value(),
             "fixed_chapter_count": self.fixed_chapter_check.isChecked(),
             "custom_prompt": self.custom_prompt_edit.text(),
-            "max_workers": self.max_workers_spin.value() if self.parallel_check.isChecked() else None,
+            "max_workers": max_workers,
             "delay_range": (self.delay_min_spin.value(), self.delay_max_spin.value()),
             "max_retries": self.max_retries_spin.value(),
             "model_name": self.model_edit.text(),
+            "mode": mode,
         }
 
         # Create and run the worker thread

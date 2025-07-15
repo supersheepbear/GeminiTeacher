@@ -12,6 +12,7 @@ __version__ = "0.1.0"
 from geminiteacher.coursemaker import (
     create_course,
     create_course_parallel,
+    create_course_cascade,
     generate_toc,
     generate_chapter,
     generate_summary,
@@ -34,6 +35,7 @@ __all__ = [
     # Core functionality
     "create_course",
     "create_course_parallel",
+    "create_course_cascade",
     "generate_toc",
     "generate_chapter",
     "generate_summary",
