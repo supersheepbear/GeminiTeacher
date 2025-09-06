@@ -1,0 +1,4 @@
+
+Executor mode:  
+
+Start with all tasks. Always run python using "uv run" Install using "uv add" or "uv pip install" Start implementation of all tasks. Make sure to write pytest according to best practice mentioned in @pytestrule.mdc Before final response to me. You should not write any integrationtests, they are too much resources consuming, refer to pytest rule for how to write correctly with light resources and mock data. Your TDD development shall always refer to what you have implemented in pytest to match the expectation. you have to run make test to make sure all test pass before ending. otherwise fix all of them.

@@ -353,7 +353,9 @@ def create_course_with_progressive_save(
             verbose=verbose,
             max_chapters=max_chapters,
             fixed_chapter_count=fixed_chapter_count,
-            custom_prompt=custom_prompt
+            custom_prompt=custom_prompt,
+            output_dir=output_dir,
+            course_title=course_title
         )
         
         # Save the chapters to files

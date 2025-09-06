@@ -1,5 +1,6 @@
 """Tests for the coursemaker module."""
-from unittest.mock import patch, MagicMock, ANY
+import unittest
+from unittest.mock import MagicMock, patch, mock_open, ANY
 
 import pytest
 from langchain.prompts import ChatPromptTemplate
@@ -230,6 +231,48 @@ def test_create_chapter_prompt_template_with_custom_prompt():
     assert custom_prompt in prompt_content
 
 
+def test_create_chapter_prompt_template_with_previous_chapters_summary():
+    """Test that create_chapter_prompt_template accepts and includes previous chapters summary."""
+    # Arrange
+    previous_summary = "第1章 Introduction to AI: Basic concepts of artificial intelligence"
+    
+    # Act
+    prompt = create_chapter_prompt_template(previous_chapters_summary=previous_summary)
+    
+    # Assert
+    assert isinstance(prompt, ChatPromptTemplate)
+    # Check that the previous summary is included in the template
+    messages = prompt.messages
+    prompt_content = str(messages[0].prompt)
+    assert "重要提醒：避免内容重复" in prompt_content
+    assert "以下是之前章节已经涵盖的内容摘要：" in prompt_content
+    assert previous_summary in prompt_content
+
+
+def test_create_chapter_prompt_template_with_both_custom_and_previous():
+    """Test that create_chapter_prompt_template handles both custom prompt and previous summary."""
+    # Arrange
+    custom_prompt = "请特别关注实际应用案例。"
+    previous_summary = "第1章 Introduction to AI: Basic concepts of artificial intelligence"
+    
+    # Act
+    prompt = create_chapter_prompt_template(
+        custom_prompt=custom_prompt, 
+        previous_chapters_summary=previous_summary
+    )
+    
+    # Assert
+    assert isinstance(prompt, ChatPromptTemplate)
+    messages = prompt.messages
+    prompt_content = str(messages[0].prompt)
+    
+    # Check both custom prompt and previous summary are included
+    assert "用户自定义指令：" in prompt_content
+    assert custom_prompt in prompt_content
+    assert "重要提醒：避免内容重复" in prompt_content
+    assert previous_summary in prompt_content
+
+
 @patch('geminiteacher.coursemaker.get_default_llm')
 @patch('geminiteacher.coursemaker.LLMChain')
 def test_generate_chapter_returns_structured_content(mock_llm_chain, mock_get_default_llm):
@@ -339,6 +382,96 @@ This is an extension."""
     mock_llm_chain.assert_called_once()
     prompt_arg = mock_llm_chain.call_args[1]['prompt']
     assert isinstance(prompt_arg, ChatPromptTemplate)
+
+
+@patch('geminiteacher.coursemaker.get_default_llm')
+@patch('geminiteacher.coursemaker.LLMChain')
+def test_generate_chapter_with_previous_chapters_summary(mock_llm_chain, mock_get_default_llm):
+    """Test that generate_chapter passes previous_chapters_summary to create_chapter_prompt_template."""
+    # Arrange
+    mock_llm = MagicMock()
+    mock_get_default_llm.return_value = mock_llm
+    
+    mock_chain_instance = MagicMock()
+    mock_llm_chain.return_value = mock_chain_instance
+    mock_chain_instance.invoke.return_value = {
+        "text": """# 标题与摘要
+This is a summary.
+
+# 系统性讲解
+This is an explanation.
+
+# 拓展思考
+This is an extension."""
+    }
+    
+    previous_summary = "第1章 Introduction to AI: Basic concepts of artificial intelligence"
+    
+    # Act
+    result = generate_chapter("Test Chapter", "Some content", previous_chapters_summary=previous_summary)
+    
+    # Assert
+    assert isinstance(result, ChapterContent)
+    assert result.title == "Test Chapter"
+    
+    # Verify that LLMChain was created with a prompt that includes the previous summary
+    mock_llm_chain.assert_called_once()
+    prompt_arg = mock_llm_chain.call_args[1]['prompt']
+    assert isinstance(prompt_arg, ChatPromptTemplate)
+    
+    # Check that the prompt contains the repetition avoidance instructions
+    prompt_content = str(prompt_arg.messages[0].prompt)
+    assert "重要提醒：避免内容重复" in prompt_content
+    assert previous_summary in prompt_content
+
+
+@patch('geminiteacher.coursemaker.get_default_llm')
+@patch('geminiteacher.coursemaker.LLMChain')
+def test_generate_chapter_with_both_custom_and_previous(mock_llm_chain, mock_get_default_llm):
+    """Test that generate_chapter handles both custom_prompt and previous_chapters_summary."""
+    # Arrange
+    mock_llm = MagicMock()
+    mock_get_default_llm.return_value = mock_llm
+    
+    mock_chain_instance = MagicMock()
+    mock_llm_chain.return_value = mock_chain_instance
+    mock_chain_instance.invoke.return_value = {
+        "text": """# 标题与摘要
+This is a summary.
+
+# 系统性讲解
+This is an explanation.
+
+# 拓展思考
+This is an extension."""
+    }
+    
+    custom_prompt = "请特别关注实际应用案例。"
+    previous_summary = "第1章 Introduction to AI: Basic concepts of artificial intelligence"
+    
+    # Act
+    result = generate_chapter(
+        "Test Chapter", 
+        "Some content", 
+        custom_prompt=custom_prompt,
+        previous_chapters_summary=previous_summary
+    )
+    
+    # Assert
+    assert isinstance(result, ChapterContent)
+    assert result.title == "Test Chapter"
+    
+    # Verify that LLMChain was created with a prompt that includes both
+    mock_llm_chain.assert_called_once()
+    prompt_arg = mock_llm_chain.call_args[1]['prompt']
+    assert isinstance(prompt_arg, ChatPromptTemplate)
+    
+    # Check that the prompt contains both custom instructions and repetition avoidance
+    prompt_content = str(prompt_arg.messages[0].prompt)
+    assert "用户自定义指令：" in prompt_content
+    assert custom_prompt in prompt_content
+    assert "重要提醒：避免内容重复" in prompt_content
+    assert previous_summary in prompt_content
 
 
 @patch('geminiteacher.coursemaker.get_default_llm')
@@ -866,7 +999,7 @@ def test_create_course_parallel_handles_empty_toc(
 def test_create_course_cascade(
     mock_generate_summary, mock_generate_chapter, mock_generate_toc, mock_get_default_llm
 ):
-    """Test that create_course_cascade orchestrates all steps in cascade mode."""
+    """Test that create_course_cascade orchestrates all steps with summarized context."""
     # Arrange
     mock_llm = MagicMock()
     mock_get_default_llm.return_value = mock_llm
@@ -875,25 +1008,28 @@ def test_create_course_cascade(
     mock_generate_toc.return_value = ["Chapter 1", "Chapter 2", "Chapter 3"]
     
     # Mock chapter generation
-    chapter1 = ChapterContent(title="Chapter 1", summary="Summary 1", explanation="Explanation 1")
-    chapter2 = ChapterContent(title="Chapter 2", summary="Summary 2", explanation="Explanation 2")
-    chapter3 = ChapterContent(title="Chapter 3", summary="Summary 3", explanation="Explanation 3")
+    chapter1 = ChapterContent(title="Chapter 1", summary="Summary 1", explanation="Explanation 1", extension="Extension 1")
+    chapter2 = ChapterContent(title="Chapter 2", summary="Summary 2", explanation="Explanation 2", extension="Extension 2")
+    chapter3 = ChapterContent(title="Chapter 3", summary="Summary 3", explanation="Explanation 3", extension="Extension 3")
     
-    # Set up the mock to return different chapters based on input
+    # Set up the mock to return different chapters and verify correct previous_chapters_summary
     def mock_generate_chapter_side_effect(chapter_title, content, **kwargs):
         if chapter_title == "Chapter 1":
+            # First chapter should not have previous_chapters_summary
+            assert kwargs.get('previous_chapters_summary') is None
             return chapter1
         elif chapter_title == "Chapter 2":
-            # For Chapter 2, verify that content includes Chapter 1's content
-            assert "Summary 1" in content
-            assert "Explanation 1" in content
+            # Second chapter should have summary from Chapter 1
+            previous_summary = kwargs.get('previous_chapters_summary')
+            assert previous_summary is not None
+            assert "第1章 Chapter 1: Summary 1" in previous_summary
             return chapter2
         elif chapter_title == "Chapter 3":
-            # For Chapter 3, verify that content includes both Chapter 1 and 2's content
-            assert "Summary 1" in content
-            assert "Explanation 1" in content
-            assert "Summary 2" in content
-            assert "Explanation 2" in content
+            # Third chapter should have summaries from Chapter 1 and 2
+            previous_summary = kwargs.get('previous_chapters_summary')
+            assert previous_summary is not None
+            assert "第1章 Chapter 1: Summary 1" in previous_summary
+            assert "第2章 Chapter 2: Summary 2" in previous_summary
             return chapter3
         return None
     
@@ -923,16 +1059,75 @@ def test_create_course_cascade(
         content, llm=mock_llm, temperature=0.0, max_chapters=10, fixed_chapter_count=False
     )
     
-    # Verify generate_chapter was called sequentially with updated content
+    # Verify generate_chapter was called sequentially with original content every time
     assert mock_generate_chapter.call_count == 3
     
-    # First call should use original content
-    first_call = mock_generate_chapter.call_args_list[0]
-    assert first_call[0][0] == "Chapter 1"  # chapter_title
-    assert first_call[0][1] == content  # content
+    # All calls should use original content (not accumulated)
+    for call_args in mock_generate_chapter.call_args_list:
+        assert call_args[0][1] == content  # content parameter should always be original
     
     # Verify summary was generated
     mock_generate_summary.assert_called_once_with(content, [chapter1, chapter2, chapter3], llm=mock_llm, temperature=0.0)
+
+
+@patch('geminiteacher.coursemaker.get_default_llm')
+@patch('geminiteacher.coursemaker.generate_toc')
+@patch('geminiteacher.coursemaker.generate_chapter')
+@patch('geminiteacher.coursemaker.generate_summary')
+@patch('builtins.open', new_callable=mock_open)
+@patch('pathlib.Path')
+@patch('os.makedirs')
+def test_create_course_cascade_with_file_output(
+    mock_makedirs, mock_path, mock_open, mock_generate_summary, 
+    mock_generate_chapter, mock_generate_toc, mock_get_default_llm
+):
+    """Test that create_course_cascade saves files when output_dir is provided."""
+    # Arrange
+    mock_llm = MagicMock()
+    mock_get_default_llm.return_value = mock_llm
+    
+    # Mock TOC generation
+    mock_generate_toc.return_value = ["Chapter 1", "Chapter 2"]
+    
+    # Mock chapter generation
+    chapter1 = ChapterContent(title="Chapter 1", summary="Summary 1", explanation="Explanation 1", extension="Extension 1")
+    chapter2 = ChapterContent(title="Chapter 2", summary="Summary 2", explanation="Explanation 2", extension="Extension 2")
+    
+    # Set up the mock to return different chapters based on input
+    mock_generate_chapter.side_effect = [chapter1, chapter2]
+    
+    # Mock summary generation
+    mock_generate_summary.return_value = "Course summary"
+    
+    # Mock Path behavior
+    mock_path_instance = MagicMock()
+    mock_path.return_value = mock_path_instance
+    mock_path_instance.mkdir.return_value = None
+    mock_path_instance.__truediv__.return_value = mock_path_instance
+    
+    # Test content
+    content = "This is the original content"
+    
+    # Act
+    course = create_course_cascade(
+        content=content,
+        verbose=True,
+        output_dir="test_output",
+        course_title="Test Course"
+    )
+    
+    # Assert
+    assert isinstance(course, Course)
+    assert course.content == content
+    assert len(course.chapters) == 2
+    assert course.chapters[0] == chapter1
+    assert course.chapters[1] == chapter2
+    
+    # Verify the directory was created
+    mock_path_instance.mkdir.assert_called_with(parents=True, exist_ok=True)
+    
+    # Verify files were opened for writing (chapter saves)
+    assert mock_open.call_count >= 2
 
 
 @patch('geminiteacher.coursemaker.get_default_llm')
@@ -951,7 +1146,7 @@ def test_create_course_cascade_with_custom_prompt(
     mock_generate_toc.return_value = ["Chapter 1"]
     
     # Mock chapter generation
-    mock_generate_chapter.return_value = ChapterContent(title="Chapter 1", summary="Summary 1")
+    mock_generate_chapter.return_value = ChapterContent(title="Chapter 1", summary="Summary 1", explanation="Explanation 1", extension="Extension 1")
     
     # Mock summary generation
     mock_generate_summary.return_value = "Course summary"

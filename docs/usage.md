@@ -1,348 +1,183 @@
 # Usage Guide
 
-This guide provides a complete walkthrough for using GeminiTeacher, from installation to advanced usage.
+## Command Line Interface (CLI)
 
-## 1. Installation & Setup
+GeminiTeacher provides a command-line interface for easy integration into scripts and workflows.
 
-First, let's get the application installed and configured.
-
-### Installing GeminiTeacher
-
-#### For Users (from PyPI)
-
-Install GeminiTeacher directly from the Python Package Index (PyPI). This is the simplest and recommended method for most users.
+### Basic Usage
 
 ```bash
-# Using pip (standard Python package manager)
-pip install geminiteacher
-
-# Or if you prefer uv (faster package manager)
-uv pip install geminiteacher
+geminiteacher --input content.txt --output-dir courses --title "My Course"
 ```
 
-#### For Developers (from Source)
+### Required Arguments
 
-If you want to contribute to the project or need the very latest (unreleased) version, you should install from source.
+- `--input`: Path to the input file (text, PDF, DOCX, etc.)
+- `--output-dir`: Directory where generated course files will be saved
+- `--title`: Title of the course
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/supersheepbear/GeminiTeacher.git
-    cd GeminiTeacher
-    ```
+### Optional Arguments
 
-2.  **Install dependencies:**
-    ```bash
-    # Using uv (recommended for development)
-    uv pip install -e .
-    
-    # Or install with all development dependencies
-    uv pip install -e ".[dev]"
-    ```
+- `--temperature`: Temperature for LLM generation (default: 0.2)
+- `--max-chapters`: Maximum number of chapters to generate (default: 10)
+- `--fixed-chapter-count`: Generate exactly the number of chapters specified by --max-chapters
+- `--custom-prompt`: Custom instructions for chapter generation or path to a file containing instructions
+- `--model-name`: Model name to use (default: "gemini-1.5-pro")
+- `--verbose`: Enable verbose logging
+- `--log-file`: Path to log file
+- `--config`: Path to YAML config file
 
-### Set Up Your Google API Key
+### Generation Modes
 
-GeminiTeacher requires a Google API key with access to the Gemini family of models. You can provide this key in two ways:
+- `--mode`: Choose the generation mode (default: "sequential")
+  - `sequential`: Generate chapters one after another
+  - `parallel`: Generate chapters simultaneously
+  - `cascade`: Generate chapters sequentially, with each new chapter building on previous ones
 
-1.  **In the GUI**: The graphical interface has a dedicated field for your API key.
-2.  **As an Environment Variable (for CLI/API use)**: This is the recommended way for command-line or programmatic use.
+### Parallel Processing Options
+
+- `--parallel`: Enable parallel processing
+- `--max-workers`: Maximum number of worker processes (default: CPU count)
+- `--delay-min`: Minimum delay between API calls in seconds (default: 0.2)
+- `--delay-max`: Maximum delay between API calls in seconds (default: 0.8)
+- `--max-retries`: Maximum number of retries for failed API calls (default: 3)
+
+### Example with All Options
 
 ```bash
-# For Linux/macOS
-export GOOGLE_API_KEY="your-api-key-here"
-
-# For Windows (PowerShell)
-$env:GOOGLE_API_KEY="your-api-key-here"
-
-# For Windows (Command Prompt)
-set GOOGLE_API_KEY=your-api-key-here
+geminiteacher \
+  --input content.txt \
+  --output-dir courses \
+  --title "Advanced Python Programming" \
+  --temperature 0.3 \
+  --max-chapters 8 \
+  --fixed-chapter-count \
+  --custom-prompt "Focus on practical examples and include code snippets" \
+  --model-name "gemini-1.5-pro" \
+  --mode cascade \
+  --verbose \
+  --log-file generation.log
 ```
 
----
+## Graphical User Interface (GUI)
 
-## 2. GUI Usage (Recommended)
-
-The graphical user interface is the easiest way to use GeminiTeacher.
+GeminiTeacher also provides a user-friendly GUI for interactive use.
 
 ### Launching the GUI
 
-After installation, run the following command in your terminal:
-
 ```bash
-# If installed via pip
 geminiteacher-gui
-
-# If that doesn't work, try the more reliable method
-python -m geminiteacher.gui.app
 ```
 
-### Using the Interface
+### GUI Components
 
-The GUI provides simple fields for all options:
-- **API Key & Model**: Paste your API key and specify the Gemini model to use (defaults to `gemini-2.5-flash`).
-- **File Paths**: Use the "Browse..." buttons to select your input file and output directory.
-- **Settings Caching**: Your settings are automatically saved when you close the app and reloaded next time.
-- **Real-time Logging**: A log window shows you the real-time progress of the generation.
+1. **API Key**: Enter your Google API Key (or set the GOOGLE_API_KEY environment variable)
+2. **Input File**: Select the input file containing your content
+3. **Output Directory**: Choose where to save the generated course files (defaults to `app/output` if left empty)
+4. **Course Title**: Enter a title for your course
+5. **Max Chapters**: Set the maximum number of chapters to generate
+6. **Fixed Chapter Count**: Check to generate exactly the specified number of chapters
+7. **Temperature**: Adjust the creativity of the LLM (0.0-1.0)
+8. **Generation Mode**: Choose between Sequential, Parallel, or Cascade generation
+9. **Parallel Processing Options**: Configure parallel processing settings
+10. **Generate Course**: Click to start the generation process
+11. **Open Output Directory**: Click to open the folder where files are saved
 
----
+## Output Files
 
-## 3. Command-Line (CLI) Usage
+The application generates the following files in the output directory:
 
-For power users and automation, the CLI provides full control over the generation process.
+- `{course_title}_chapter_{nn}_{chapter_title}.md`: Individual chapter files
+- `{course_title}_summary.md`: Course summary file
 
-**A Note on Input Files**: The input file can be any text-based format that Python can read. This includes `.txt`, `.md`, `.rst`, code files like `.py`, or any other file containing plain text.
+Each chapter file contains:
+- Title
+- Summary
+- Detailed explanation
+- Extension thoughts
 
-### Method 1: Using a `config.yaml` File (Best Practice)
-
-Create a `config.yaml` to define your settings, then run:
-```bash
-# Most reliable method
-python -m geminiteacher.app.generate_course --config config.yaml
-
-# If the package is properly installed in your PATH
-geminiteacher --config config.yaml
-```
-
-This is the recommended approach as it keeps your settings organized and version-controllable. Any command-line flag you use will override the settings in the `config.yaml` file.
-
-Here is a comprehensive `config.yaml` example with all available options explained.
-
-```yaml
-# =======================================================
-# Comprehensive GeminiTeacher Configuration
-# =======================================================
-
-# --- Input/Output Settings ---
-input:
-  # Required. Path to your raw content file. This can be any text-based format
-  # that Python can read, such as .txt, .md, .rst, .py, etc.
-  path: "input/my_raw_notes.txt"
-
-output:
-  # Required. Directory where the generated course files will be saved.
-  directory: "output/MyAwesomeCourse"
-  # Optional. If provided, all logs will be saved to this file.
-  log_file: "logs/course_generation.log"
-
-# --- Course Settings ---
-course:
-  # Required. The title of your course.
-  title: "Advanced Python Programming"
-  # Optional. Path to a file with custom instructions for the AI.
-  # This is very useful for guiding the tone, style, and content focus.
-  custom_prompt: "prompts/formal_academic_prompt.txt"
-
-# --- Generation Settings ---
-generation:
-  # The specific Gemini model to use (e.g., 'gemini-1.5-pro', 'gemini-2.5-flash').
-  # Default: 'gemini-1.5-pro'
-  model_name: 'gemini-1.5-pro-latest'
-  # Controls the "creativity" of the AI. Lower is more predictable. (0.0 - 1.0)
-  # Default: 0.2
-  temperature: 0.25
-  # The target number of chapters for the course.
-  # Default: 10
-  max_chapters: 15
-  # If true, the AI will generate exactly `max_chapters`. If false, the AI
-  # may choose to generate fewer chapters if it deems it appropriate.
-  # Default: false
-  fixed_chapter_count: false
-  # Generation mode: "sequential", "parallel", or "cascade".
-  # - sequential: Generate chapters one after another (default)
-  # - parallel: Generate chapters simultaneously for faster processing
-  # - cascade: Generate chapters sequentially, where each new chapter builds upon
-  #   the content of all previously generated chapters for better continuity
-  # Default: "sequential"
-  mode: "cascade"
-
-# --- Performance & Reliability Settings ---
-parallel:
-  # Enable parallel processing to generate chapters simultaneously.
-  # This provides a major speed boost for large documents.
-  # Default: false
-  enabled: true
-  # Number of parallel processes to run.
-  # Default: The number of CPU cores on your machine.
-  max_workers: 8
-  # The minimum random delay (in seconds) between parallel API requests
-  # to avoid rate limiting. Default: 0.2
-  delay_min: 0.5
-  # The maximum random delay (in seconds). Default: 0.8
-  delay_max: 1.5
-  # The maximum number of times to retry a failed API call for a chapter.
-  # Default: 3
-  max_retries: 5
-
-# --- General Settings ---
-# Enable verbose output for detailed real-time progress logging.
-# This is very helpful for debugging.
-# Default: false
-verbose: true
-```
-
-### Method 2: Using Command-Line Flags
-
-Pass arguments directly for one-off tasks.
-
-```bash
-# Example for a large, important document
-python -m geminiteacher.app.generate_course \
-  --input "input/xianxingdaishu.md" \
-  --output-dir "output/linear_algebra_course" \
-  --title "Linear Algebra Fundamentals" \
-  --parallel \
-  --max-workers 14 \
-  --verbose
-```
-
-```bash
-# Example using cascade mode for better chapter continuity
-python -m geminiteacher.app.generate_course \
-  --input "input/novel_draft.md" \
-  --output-dir "output/novel_course" \
-  --title "Creative Writing: Novel Structure" \
-  --mode cascade \
-  --verbose
-```
-
----
-
-### All Command-Line Options
-
-Here is the full list of available command-line options.
-
-*   **`--config`** (Alias: **`-c`**)  
-    *Type*: `PATH`  
-    Path to the YAML configuration file. If used, all other options can be defined here.
-
-*   **`--input`** (Alias: **`-i`**)  
-    *Type*: `PATH`  
-    **Required.** Path to the input content file (e.g., `.txt`, `.md`).
-
-*   **`--output-dir`** (Alias: **`-o`**)  
-    *Type*: `PATH`  
-    **Required.** Directory where the generated course files will be saved.
-
-*   **`--title`** (Alias: **`-t`**)  
-    *Type*: `TEXT`  
-    **Required.** The title of your course.
-
-*   **`--custom-prompt`** (Alias: **`-p`**)  
-    *Type*: `PATH`  
-    Optional path to a file containing custom instructions for the AI to follow during generation.
-
-*   **`--model-name`**  
-    *Type*: `TEXT`  
-    The specific Gemini model to use (e.g., `gemini-1.5-pro`, `gemini-2.5-flash`). Default: `gemini-1.5-pro`.
-
-*   **`--temperature`**  
-    *Type*: `FLOAT`  
-    Controls the "creativity" or randomness of the AI's output. A value from `0.0` (most predictable) to `1.0` (most creative). Default: `0.2`.
-
-*   **`--max-chapters`**  
-    *Type*: `INTEGER`  
-    The target number of chapters for the course. The final number may be less if the AI deems it appropriate. Default: `10`.
-
-*   **`--fixed-chapter-count`**  
-    *Type*: `FLAG`  
-    If set, forces the AI to generate exactly the number of chapters specified by `--max-chapters`.
-
-*   **`--mode`**  
-    *Type*: `TEXT`  
-    Generation mode: `sequential`, `parallel`, or `cascade`. Default: `sequential`.
-    - `sequential`: Generate chapters one after another
-    - `parallel`: Generate chapters simultaneously for faster processing
-    - `cascade`: Generate chapters sequentially, where each new chapter builds upon the content of all previously generated chapters for better continuity
-
-*   **`--parallel`**  
-    *Type*: `FLAG`  
-    If set, enables parallel processing to generate chapters simultaneously for a significant speed boost. This is equivalent to `--mode parallel` and is kept for backward compatibility.
-
-*   **`--max-workers`**  
-    *Type*: `INTEGER`  
-    When using `--parallel`, this sets the number of concurrent processes. Defaults to the number of CPU cores on your machine.
-
-*   **`--delay-min`**  
-    *Type*: `FLOAT`  
-    The minimum random delay (in seconds) between parallel API requests to avoid rate limiting. Default: `0.2`.
-
-*   **`--delay-max`**  
-    *Type*: `FLOAT`  
-    The maximum random delay (in seconds) between parallel API requests. Default: `0.8`.
-
-*   **`--max-retries`**  
-    *Type*: `INTEGER`  
-    The maximum number of times to retry a failed API call for a chapter before giving up. Default: `3`.
-
-*   **`--verbose`** (Alias: **`-v`**)  
-    *Type*: `FLAG`  
-    Enable verbose output for detailed real-time progress logging, which is very helpful for debugging.
-
-*   **`--log-file`**  
-    *Type*: `PATH`  
-    Optional path to a file where all log output will be saved.
-
----
-
-## 4. Python API Usage
-
-You can also use GeminiTeacher programmatically in your own Python scripts.
-
-```python
-import geminiteacher as gt
-
-# Generate a course with parallel processing
-course = gt.create_course_parallel(
-    content="path/to/your/content.txt",
-    course_title="My Programmatic Course",
-    output_dir="courses_output",
-    max_chapters=10,
-    max_workers=4
-)
-
-print(f"Generated {len(course.chapters)} chapters in parallel.")
-
-# Generate a course with cascade mode for better continuity between chapters
-course = gt.create_course_cascade(
-    content="path/to/your/content.txt",
-    course_title="My Progressive Course",
-    output_dir="courses_output",
-    max_chapters=10
-)
-
-print(f"Generated {len(course.chapters)} chapters in cascade mode.")
-```
-
----
-
-## 5. Generation Modes Explained
-
-GeminiTeacher offers three different generation modes, each with its own advantages:
+## Generation Modes Explained
 
 ### Sequential Mode (Default)
 
-In sequential mode, chapters are generated one after another, but each chapter is created independently based only on the original content. This mode is:
-
-- **Balanced**: Offers a good mix of speed and quality
-- **Consistent**: Each chapter maintains the same relationship to the source material
-- **Ideal for**: Most general-purpose course generation tasks
+In sequential mode, chapters are generated one after another, but each chapter is generated independently based only on the original content. This mode offers a good balance between speed and quality.
 
 ### Parallel Mode
 
-In parallel mode, multiple chapters are generated simultaneously using multiple processes. This mode is:
-
-- **Fast**: Can be 3-10x faster than sequential mode, depending on your CPU and API rate limits
-- **Resource-intensive**: Uses more CPU cores and makes more API calls concurrently
-- **Ideal for**: Large documents or when you need results quickly
+In parallel mode, multiple chapters are generated simultaneously using multiple worker processes. This mode is significantly faster than sequential mode, but each chapter is still generated independently.
 
 ### Cascade Mode
 
-In cascade mode, chapters are generated sequentially, but with a key difference: each new chapter's generation is informed by all previously generated chapters. This mode is:
+In cascade mode, chapters are generated sequentially, with each new chapter being informed by the summaries of all previously generated chapters. This creates a more coherent narrative flow while avoiding content repetition.
 
-- **Coherent**: Creates a more connected narrative flow between chapters
-- **Progressive**: Later chapters can build upon concepts introduced in earlier ones
-- **Slower**: Takes longer than sequential mode as each chapter must wait for previous ones
-- **Ideal for**: Narrative content, complex subjects where continuity matters, or when you want the AI to develop ideas progressively
+**Key Features:**
+- Each chapter is generated based on the original content plus summaries of previous chapters
+- The AI receives explicit instructions not to repeat topics already covered
+- Previous chapter summaries are used as a "what to avoid" guide
+- This prevents content duplication while maintaining logical progression
 
-Choose the mode that best fits your specific needs and content type.
+**How it works:**
+1. Generate the first chapter based only on the original content
+2. For the second chapter, include a summary of Chapter 1 in the prompt with instructions to avoid repetition
+3. For the third chapter, include summaries of Chapters 1 and 2, and so on
+4. Each chapter builds upon previous knowledge without repeating content
 
---- 
+Cascade mode is ideal for:
+- Creating courses with a progressive learning path
+- Ensuring consistent terminology throughout the course
+- **Avoiding repetition of content between chapters** (primary benefit)
+- Building upon concepts introduced in earlier chapters
+- Creating a natural flow from basic to advanced topics
+
+Note that cascade mode is always sequential and cannot be parallelized due to its dependency on previous chapters.
+
+## API Key
+
+You need to provide a Google API key with access to the Gemini API:
+
+1. Set the `GOOGLE_API_KEY` environment variable, or
+2. Enter the API key in the GUI or CLI
+
+## Configuration File
+
+You can use a YAML configuration file to store your preferred settings:
+
+```yaml
+api:
+  model_name: "gemini-1.5-pro"
+
+input:
+  path: "content.txt"
+
+output:
+  directory: "courses"
+
+course:
+  title: "My Course"
+  custom_prompt: "Focus on practical examples"
+
+generation:
+  temperature: 0.2
+  max_chapters: 10
+  fixed_chapter_count: true
+  mode: "cascade"
+
+parallel:
+  enabled: false
+  max_workers: 4
+  delay_min: 0.2
+  delay_max: 0.8
+  max_retries: 3
+
+logging:
+  verbose: true
+  log_file: "generation.log"
+```
+
+Use the configuration file with:
+
+```bash
+geminiteacher --config config.yaml
+```
+
+Command-line arguments will override values in the configuration file. 

@@ -90,7 +90,7 @@ def create_toc_prompt(max_chapters: int = 10, fixed_chapter_count: bool = False)
     )
 
 
-def create_chapter_prompt_template(custom_prompt: Optional[str] = None) -> ChatPromptTemplate:
+def create_chapter_prompt_template(custom_prompt: Optional[str] = None, previous_chapters_summary: Optional[str] = None) -> ChatPromptTemplate:
     """
     Create a prompt template for generating chapter explanations.
     
@@ -101,6 +101,8 @@ def create_chapter_prompt_template(custom_prompt: Optional[str] = None) -> ChatP
     ----
     custom_prompt : Optional[str], optional
         Custom instructions to append to the "系统性讲解" section. Default is None.
+    previous_chapters_summary : Optional[str], optional
+        Summary of previously generated chapters to avoid repetition. Default is None.
     
     Returns
     ----
@@ -114,6 +116,9 @@ def create_chapter_prompt_template(custom_prompt: Optional[str] = None) -> ChatP
     
     >>> custom = "请特别关注实际应用案例，并提供更多代码示例。"
     >>> prompt = create_chapter_prompt_template(custom_prompt=custom)
+    
+    >>> prev_summary = "Chapter 1 covered basic concepts, Chapter 2 covered algorithms"
+    >>> prompt = create_chapter_prompt_template(previous_chapters_summary=prev_summary)
     """
     # Define the base systematic explanation section
     systematic_explanation = """[这是最重要的部分。请尽量非常详细地解释所有知识点， 需要全面覆盖所有的原内容，原内容的举例也尽量保留。越详细越好， 不用节约token。
@@ -127,10 +132,22 @@ def create_chapter_prompt_template(custom_prompt: Optional[str] = None) -> ChatP
     if custom_prompt:
         systematic_explanation += f"\n\n         用户自定义指令：{custom_prompt}"
     
-    return ChatPromptTemplate.from_template(
-        f"""你是一位博士后， 也是一位专业教育工作者，精通所有学科。正在为初学者创建一个结构化的学习课程。
+    # Build the base prompt
+    base_prompt = """你是一位博士后， 也是一位专业教育工作者，精通所有学科。正在为初学者创建一个结构化的学习课程。
         
-        请基于以下内容，为章节《{{chapter_title}}》创建详细的讲解。
+        请基于以下内容，为章节《{{chapter_title}}》创建详细的讲解。"""
+    
+    # Add previous chapters summary section if provided
+    if previous_chapters_summary:
+        base_prompt += f"""
+        
+        **重要提醒：避免内容重复**
+        以下是之前章节已经涵盖的内容摘要：
+        {previous_chapters_summary}
+        
+        请确保本章节的内容不要重复上述已涵盖的主题和概念。你应该在这些基础上进一步拓展和深入，介绍新的知识点和概念。"""
+    
+    base_prompt += f"""
         你的回复必须使用以下结构：
         
         # 标题与摘要
@@ -147,7 +164,8 @@ def create_chapter_prompt_template(custom_prompt: Optional[str] = None) -> ChatP
         原始内容:
         {{content}}
         """
-    )
+    
+    return ChatPromptTemplate.from_template(base_prompt)
 
 
 def create_summary_prompt_template() -> ChatPromptTemplate:
@@ -354,7 +372,7 @@ def generate_toc(content: str, llm: Optional[BaseLanguageModel] = None, temperat
     return chapter_titles
 
 
-def generate_chapter(chapter_title: str, content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0, custom_prompt: Optional[str] = None) -> ChapterContent:
+def generate_chapter(chapter_title: str, content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0, custom_prompt: Optional[str] = None, previous_chapters_summary: Optional[str] = None) -> ChapterContent:
     """
     Generate a structured explanation for a single chapter.
     
@@ -375,6 +393,8 @@ def generate_chapter(chapter_title: str, content: str, llm: Optional[BaseLanguag
         Default is 0.0 (deterministic output).
     custom_prompt : Optional[str], optional
         Custom instructions to append to the "系统性讲解" section. Default is None.
+    previous_chapters_summary : Optional[str], optional
+        Summary of previously generated chapters to avoid repetition. Default is None.
     
     Returns
     ----
@@ -389,9 +409,12 @@ def generate_chapter(chapter_title: str, content: str, llm: Optional[BaseLanguag
     
     >>> custom = "请特别关注实际应用案例，并提供更多代码示例。"
     >>> chapter = generate_chapter("Machine Learning Basics", "Content about ML...", custom_prompt=custom)
+    
+    >>> prev_summary = "Chapter 1: Introduction to AI basics"
+    >>> chapter = generate_chapter("Deep Learning", "Content about DL...", previous_chapters_summary=prev_summary)
     """
     # Create the prompt template
-    prompt = create_chapter_prompt_template(custom_prompt=custom_prompt)
+    prompt = create_chapter_prompt_template(custom_prompt=custom_prompt, previous_chapters_summary=previous_chapters_summary)
     
     # If no LLM is provided, configure Gemini
     if llm is None:
@@ -783,7 +806,9 @@ def create_course_cascade(
     verbose: bool = False, 
     max_chapters: int = 10, 
     fixed_chapter_count: bool = False, 
-    custom_prompt: Optional[str] = None
+    custom_prompt: Optional[str] = None,
+    output_dir: Optional[str] = None,
+    course_title: Optional[str] = None
 ) -> Course:
     """
     Create a course with cascade chapter generation.
@@ -809,6 +834,11 @@ def create_course_cascade(
         Whether to use fixed chapter count. Default is False.
     custom_prompt : Optional[str], optional
         Custom prompt instructions. Default is None.
+    output_dir : Optional[str], optional
+        Directory to save the chapter files. If provided, previously saved chapter files
+        will be read and included in the context for the next chapter generation.
+    course_title : Optional[str], optional
+        Title of the course for saving files. Required if output_dir is provided.
         
     Returns
     -------
@@ -849,38 +879,63 @@ def create_course_cascade(
         if verbose:
             print("Generating chapters in cascade mode...")
         
-        # Start with the original content
-        current_context = content
-        
         # Generate each chapter sequentially
         for i, chapter_title in enumerate(chapter_titles):
             if verbose:
                 print(f"Generating chapter {i+1}/{len(chapter_titles)}: {chapter_title}")
             
-            # Generate the current chapter using the accumulated context
+            # Build summary of previous chapters to avoid repetition
+            previous_chapters_summary = None
+            if chapters:  # If we have previous chapters
+                summaries = []
+                for idx, prev_chapter in enumerate(chapters):
+                    summaries.append(f"第{idx+1}章 {prev_chapter.title}: {prev_chapter.summary}")
+                previous_chapters_summary = "\n".join(summaries)
+            
+            # Generate the current chapter using original content and previous summaries
             chapter = generate_chapter(
                 chapter_title, 
-                current_context, 
+                content,  # Always use original content, not accumulated context
                 llm=llm, 
                 temperature=temperature,
-                custom_prompt=custom_prompt
+                custom_prompt=custom_prompt,
+                previous_chapters_summary=previous_chapters_summary
             )
             
             # Add the chapter to the list
             chapters.append(chapter)
             
-            # Update the context for the next chapter by appending this chapter's content
-            # Format the chapter content to be added to the context
-            chapter_content = f"""
-# {chapter.title}
-{chapter.summary}
-
-{chapter.explanation}
-
-{chapter.extension}
-"""
-            # Append the new chapter content to the existing context
-            current_context = f"{current_context}\n\n{chapter_content}"
+            # If output_dir and course_title are provided, save the chapter to a file
+            if output_dir and course_title:
+                from pathlib import Path
+                import os
+                
+                # Save the current chapter to a file
+                output_path = Path(output_dir)
+                output_path.mkdir(parents=True, exist_ok=True)
+                
+                # Sanitize course title for filename
+                safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in course_title)
+                safe_title = safe_title.replace(" ", "_")
+                
+                # Create chapter filename with chapter number and title
+                chapter_title_safe = "".join(c if c.isalnum() or c in " -_" else "_" for c in chapter.title)
+                chapter_title_safe = chapter_title_safe.replace(" ", "_")
+                chapter_filename = f"{safe_title}_chapter_{i+1:02d}_{chapter_title_safe}.md"
+                chapter_path = output_path / chapter_filename
+                
+                # Save chapter content
+                with open(chapter_path, 'w', encoding='utf-8') as f:
+                    f.write(f"# {chapter.title}\n\n")
+                    f.write("## Summary\n\n")
+                    f.write(f"{chapter.summary}\n\n")
+                    f.write("## Explanation\n\n")
+                    f.write(f"{chapter.explanation}\n\n")
+                    f.write("## Extension\n\n")
+                    f.write(f"{chapter.extension}\n")
+                
+                if verbose:
+                    print(f"Saved chapter {i+1} to {chapter_path}")
         
         course.chapters = chapters
         

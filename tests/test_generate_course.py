@@ -137,5 +137,7 @@ def test_create_course_with_progressive_save_cascade_mode(
         verbose=False,
         max_chapters=10,
         fixed_chapter_count=False,
-        custom_prompt=None
+        custom_prompt=None,
+        output_dir="/output",
+        course_title="Test Course"
     ) 

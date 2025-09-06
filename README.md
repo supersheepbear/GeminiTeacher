@@ -1,32 +1,76 @@
-# GeminiTeacher: The AI-Powered Course Creator
+# GeminiTeacher
 
-Turn any text-based document (notes, articles, books) into a structured, multi-chapter online course with a single command.
+GeminiTeacher is a Python application that uses Google's Gemini LLM to automatically generate structured learning courses from provided text content.
 
-[![PyPI version](https://badge.fury.io/py/geminiteacher.svg)](https://badge.fury.io/py/geminiteacher)
-[![License](https://img.shields.io/github/license/supersheepbear/GeminiTeacher)](https://github.com/supersheepbear/GeminiTeacher/blob/main/LICENSE)
+## Features
 
-**[Full Documentation Site](https://yxiong.org/GeminiTeacher/)**
+- Generate complete courses from text input
+- Support for multiple file formats via the `markitdown` library
+- Three generation modes:
+  - **Sequential**: Generate chapters one after another (default)
+  - **Parallel**: Generate chapters simultaneously for faster processing
+  - **Cascade**: Generate chapters in sequence, with each new chapter building on previous ones
+- Command-line interface (CLI)
+- Graphical user interface (GUI)
+- Progressive saving of generated content
+- Customizable prompts and generation parameters
 
-## What It Does
+## Installation
 
-GeminiTeacher acts like an AI agent, using a sequence of cascading prompts with Google's Gemini models to perform a comprehensive analysis of your content. First, it intelligently outlines a table of contents with a user-defined number of chapters. It then generates a detailed chapter for each topic in the outline, plus a final course summary, effectively creating a complete, multi-chapter book from your raw material.
+```bash
+pip install geminiteacher
+```
 
-GeminiTeacher offers three different generation modes to suit your needs:
+Or install from source:
 
-- **Sequential Mode (Default)**: Generates chapters one after another, balancing speed and quality.
-- **Parallel Mode**: Generates multiple chapters simultaneously for faster processing.
-- **Cascade Mode**: Generates chapters sequentially, where each new chapter builds upon all previously generated chapters, creating a more coherent narrative flow.
+```bash
+git clone https://github.com/yourusername/geminiteacher.git
+cd geminiteacher
+pip install -e .
+```
 
-## How to Use
+## Usage
 
-For complete installation and usage instructions, please visit our comprehensive documentation site:
+### Command Line Interface
 
-**➡️ [Usage Guide: https://yxiong.org/GeminiTeacher/usage/](https://yxiong.org/GeminiTeacher/usage/)**
+```bash
+# Basic usage
+geminiteacher --input content.txt --output-dir courses --title "My Course"
 
-## Contributing
+# With more options
+geminiteacher --input content.txt --output-dir courses --title "My Course" \
+  --max-chapters 5 --fixed-chapter-count --temperature 0.2 \
+  --mode cascade --custom-prompt "Focus on practical examples"
+```
 
-Contributions are welcome! Please feel free to submit a pull request or open an issue.
+### Graphical User Interface
+
+```bash
+# Launch the GUI
+geminiteacher-gui
+```
+
+## Output Files
+
+By default, the application saves generated files to:
+- CLI: The directory specified with `--output-dir` (required)
+- GUI: The directory specified in the "Output Directory" field, or `app/output` if left empty
+
+Each course generation creates:
+- One markdown file per chapter: `{course_title}_chapter_{nn}_{chapter_title}.md`
+- One summary file: `{course_title}_summary.md`
+
+## API Key
+
+You need to provide a Google API key with access to the Gemini API:
+
+1. Set the `GOOGLE_API_KEY` environment variable, or
+2. Enter the API key in the GUI
+
+## Documentation
+
+For more detailed documentation, see the [docs](https://geminiteacher.readthedocs.io/).
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License - see the LICENSE file for details.

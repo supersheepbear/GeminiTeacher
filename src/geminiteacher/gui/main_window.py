@@ -85,10 +85,15 @@ class Worker(QObject):
             self.log_message.emit("Starting course generation...")
             create_course_with_progressive_save(**self.params)
             self.log_message.emit("Course generation finished successfully.")
-
+            
+            # Display the output directory path where files were saved
+            output_dir = self.params.get('output_dir', 'app/output')
+            self.log_message.emit(f"Files have been saved to: {os.path.abspath(output_dir)}")
+            
+            self.finished.emit()
         except Exception as e:
-            self.error.emit(f"An error occurred: {e}")
-        finally:
+            import traceback
+            self.error.emit(f"Error: {str(e)}\n{traceback.format_exc()}")
             self.finished.emit()
 
 
@@ -155,6 +160,10 @@ class MainWindow(QMainWindow):
         self.progress_bar = QProgressBar()
         self.log_box = QPlainTextEdit()
         self.log_box.setReadOnly(True)
+        
+        # Open output directory button
+        self.open_output_btn = QPushButton("Open Output Directory")
+        self.open_output_btn.setEnabled(False)
 
     def create_layout(self):
         """Assemble widgets into a layout."""
@@ -182,9 +191,12 @@ class MainWindow(QMainWindow):
 
         self.layout.addWidget(self.verbose_check)
         self.layout.addWidget(self.generate_btn)
-        self.layout.addWidget(QLabel("Progress:"))
         self.layout.addWidget(self.progress_bar)
-        self.layout.addWidget(QLabel("Logs:"))
+        
+        # Add button to open output directory
+        self.layout.addWidget(self.open_output_btn)
+        
+        self.layout.addWidget(QLabel("Log Output:"))
         self.layout.addWidget(self.log_box)
 
     def create_file_input(self, line_edit, button, is_folder=False):
@@ -203,10 +215,14 @@ class MainWindow(QMainWindow):
         return widget
 
     def create_connections(self):
-        """Connect widget signals to slots."""
+        """Connect signals to slots."""
+        self.input_file_btn.clicked.connect(lambda: self.browse_file(self.input_file_edit))
+        self.output_dir_btn.clicked.connect(lambda: self.browse_folder(self.output_dir_edit))
+        self.custom_prompt_btn.clicked.connect(lambda: self.browse_file(self.custom_prompt_edit))
         self.generate_btn.clicked.connect(self.start_generation)
-        self.mode_combo.currentIndexChanged.connect(self.update_ui_for_mode)
         self.parallel_check.toggled.connect(self.update_ui_for_parallel)
+        self.mode_combo.currentIndexChanged.connect(self.update_ui_for_mode)
+        self.open_output_btn.clicked.connect(self.open_output_directory)
 
     def update_ui_for_mode(self):
         """Update UI elements based on the selected generation mode."""
@@ -303,6 +319,42 @@ class MainWindow(QMainWindow):
         # Update UI based on selected mode
         self.update_ui_for_mode()
 
+    def open_output_directory(self):
+        """Open the output directory in the file explorer."""
+        output_dir = self.output_dir_edit.text() or "app/output"
+        output_path = os.path.abspath(output_dir)
+        
+        if os.path.exists(output_path):
+            # Open the directory using the default file explorer
+            if sys.platform == 'win32':
+                os.startfile(output_path)
+            elif sys.platform == 'darwin':  # macOS
+                import subprocess
+                subprocess.Popen(['open', output_path])
+            else:  # Linux
+                import subprocess
+                subprocess.Popen(['xdg-open', output_path])
+        else:
+            self.log_box.appendPlainText(f"Output directory does not exist: {output_path}")
+
+    def worker_finished(self):
+        """Handle worker thread completion."""
+        self.generate_btn.setEnabled(True)
+        self.progress_bar.setValue(100)
+        self.open_output_btn.setEnabled(True)
+        
+        # Disconnect signals to avoid memory leaks
+        if hasattr(self, 'thread') and self.thread is not None:
+            self.thread.quit()
+            self.thread.wait()
+
+    def handle_error(self, error_msg):
+        """Handle errors emitted by the worker."""
+        self.log_box.appendPlainText(f"Error: {error_msg}")
+        self.generate_btn.setEnabled(True)
+        self.progress_bar.setValue(0)
+        self.open_output_btn.setEnabled(False)
+
     def start_generation(self):
         """Prepare and start the course generation in a worker thread."""
         # Set API Key from GUI if provided
@@ -316,6 +368,7 @@ class MainWindow(QMainWindow):
         self.generate_btn.setEnabled(False)
         self.progress_bar.setValue(0)
         self.log_box.clear()
+        self.open_output_btn.setEnabled(False)
 
         # Get the selected generation mode
         mode = self.mode_combo.currentText().lower()
@@ -330,7 +383,7 @@ class MainWindow(QMainWindow):
         params = {
             "content": self.input_file_edit.text(),
             "course_title": self.title_edit.text(),
-            "output_dir": self.output_dir_edit.text(),
+            "output_dir": self.output_dir_edit.text() or "app/output",
             "temperature": self.temperature_spin.value(),
             "verbose": self.verbose_check.isChecked(),
             "max_chapters": self.max_chapters_spin.value(),
@@ -347,14 +400,8 @@ class MainWindow(QMainWindow):
         self.thread = QThread()
         self.worker = Worker(params)
         self.worker.moveToThread(self.thread)
-
         self.thread.started.connect(self.worker.run)
-        self.worker.finished.connect(self.thread.quit)
-        self.worker.finished.connect(self.worker.deleteLater)
-        self.thread.finished.connect(self.thread.deleteLater)
+        self.worker.finished.connect(self.worker_finished)
         self.worker.log_message.connect(self.log_box.appendPlainText)
-        self.worker.error.connect(self.log_box.appendPlainText)
-        self.worker.finished.connect(lambda: self.generate_btn.setEnabled(True))
-        self.worker.finished.connect(lambda: self.progress_bar.setValue(100))
-
+        self.worker.error.connect(self.handle_error)
         self.thread.start() 

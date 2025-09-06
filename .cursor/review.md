@@ -1,0 +1,1 @@
+As a reviewer, follow the rule, check if the requirements are met, and if all quality standards are met.
