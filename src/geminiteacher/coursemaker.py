@@ -135,7 +135,9 @@ def create_chapter_prompt_template(custom_prompt: Optional[str] = None, previous
     # Build the base prompt
     base_prompt = """你是一位博士后， 也是一位专业教育工作者，精通所有学科。正在为初学者创建一个结构化的学习课程。
         
-        请基于以下内容，为章节《{{chapter_title}}》创建详细的讲解。"""
+        请基于以下内容，为章节《{{chapter_title}}》创建详细的讲解。
+        
+        **重要指令：** 请直接开始讲解本章的核心内容，不要在前言部分回顾或总结之前章节的知识点。开门见山，直入主题。"""
     
     # Add previous chapters summary section if provided
     if previous_chapters_summary:
@@ -634,11 +636,11 @@ def parse_chapter_content(chapter_title: str, text: str) -> ChapterContent:
     # Initialize the chapter content with the title
     chapter_content = ChapterContent(title=chapter_title)
     
-    # Define section markers
+    # Define section markers with multiple possibilities
     sections = {
-        "summary": ["# 标题与摘要", "# 摘要", "标题与摘要"],
-        "explanation": ["# 系统性讲解", "# 讲解", "系统性讲解"],
-        "extension": ["# 拓展思考", "# 拓展", "拓展思考"]
+        "summary": ["# 标题与摘要", "# 摘要", "# Summary"],
+        "explanation": ["# 系统性讲解", "# 讲解", "# Explanation"],
+        "extension": ["# 拓展思考", "# 拓展", "# Extension"]
     }
     
     # Split the text by section markers

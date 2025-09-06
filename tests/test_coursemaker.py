@@ -18,7 +18,8 @@ from geminiteacher.coursemaker import (
     configure_gemini_llm,
     get_default_llm,
     create_course_parallel,
-    create_course_cascade
+    create_course_cascade,
+    parse_chapter_content
 )
 
 
@@ -212,6 +213,7 @@ def test_create_chapter_prompt_template():
     assert "标题与摘要" in prompt_content
     assert "系统性讲解" in prompt_content
     assert "拓展思考" in prompt_content
+    assert "请直接开始讲解本章的核心内容" in prompt_content
 
 
 def test_create_chapter_prompt_template_with_custom_prompt():
@@ -1194,3 +1196,53 @@ def test_create_course_cascade_handles_empty_toc(
     
     # Verify generate_summary was not called
     mock_generate_summary.assert_not_called() 
+
+
+def test_parse_chapter_content_with_english_headers():
+    """
+    Test that parse_chapter_content can handle English headers.
+    
+    This simulates a scenario where the LLM might return English headers
+    instead of the expected Chinese ones.
+    """
+    chapter_title = "Test Chapter with English Headers"
+    text = """
+    # Summary
+    This is the summary.
+    
+    # Explanation
+    This is the explanation.
+    
+    # Extension
+    This is the extension.
+    """
+    
+    # Parse the chapter content
+    chapter = parse_chapter_content(chapter_title, text)
+    
+    # Assert that the chapter content was parsed correctly
+    assert chapter.title == chapter_title
+    assert "This is the summary." in chapter.summary
+    assert "This is the explanation." in chapter.explanation
+    assert "This is the extension." in chapter.extension
+
+
+def test_parse_chapter_content_with_missing_sections():
+    """Test that parse_chapter_content handles missing sections gracefully."""
+    chapter_title = "Test Chapter"
+    text = """
+    # 标题与摘要
+    This is the summary.
+    
+    # 系统性讲解
+    This is the explanation.
+    """
+    
+    # Parse the chapter content
+    chapter = parse_chapter_content(chapter_title, text)
+    
+    # Assert that the chapter content was parsed correctly and missing sections are empty
+    assert chapter.title == "Test Chapter"
+    assert "This is the summary." in chapter.summary
+    assert "This is the explanation." in chapter.explanation
+    assert chapter.extension == "" 
