@@ -287,7 +287,7 @@ def get_default_llm(temperature: float = 0.0) -> BaseLanguageModel:
         raise e
 
 
-def generate_toc(content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0, max_chapters: int = 10, fixed_chapter_count: bool = False) -> List[str]:
+def generate_toc(content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0, max_chapters: int = 10, fixed_chapter_count: bool = False, verbose: bool = False) -> List[str]:
     """
     Generate a table of contents from raw content.
     
@@ -309,6 +309,8 @@ def generate_toc(content: str, llm: Optional[BaseLanguageModel] = None, temperat
     fixed_chapter_count : bool, optional
         If True, generate exactly max_chapters. If False, generate between 1 and max_chapters
         based on content complexity. Default is False.
+    verbose : bool, optional
+        Whether to print progress messages during LLM calls. Default is False.
     
     Returns
     ----
@@ -343,10 +345,14 @@ def generate_toc(content: str, llm: Optional[BaseLanguageModel] = None, temperat
     )
     
     # Invoke the chain with the content
+    if verbose:
+        print("→ Sending table of contents request to LLM...")
     result = chain.invoke({
         "content": content,
         "max_chapters": max_chapters
     })
+    if verbose:
+        print("← Received table of contents response from LLM")
     
     # Get the raw text from the result
     text = result.get("text", "")
@@ -374,7 +380,7 @@ def generate_toc(content: str, llm: Optional[BaseLanguageModel] = None, temperat
     return chapter_titles
 
 
-def generate_chapter(chapter_title: str, content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0, custom_prompt: Optional[str] = None, previous_chapters_summary: Optional[str] = None) -> ChapterContent:
+def generate_chapter(chapter_title: str, content: str, llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0, custom_prompt: Optional[str] = None, previous_chapters_summary: Optional[str] = None, verbose: bool = False) -> ChapterContent:
     """
     Generate a structured explanation for a single chapter.
     
@@ -397,6 +403,8 @@ def generate_chapter(chapter_title: str, content: str, llm: Optional[BaseLanguag
         Custom instructions to append to the "系统性讲解" section. Default is None.
     previous_chapters_summary : Optional[str], optional
         Summary of previously generated chapters to avoid repetition. Default is None.
+    verbose : bool, optional
+        Whether to print progress messages during LLM calls. Default is False.
     
     Returns
     ----
@@ -429,10 +437,14 @@ def generate_chapter(chapter_title: str, content: str, llm: Optional[BaseLanguag
     )
     
     # Invoke the chain with the chapter title and content
+    if verbose:
+        print(f"→ Sending chapter request to LLM for: {chapter_title}")
     result = chain.invoke({
         "chapter_title": chapter_title,
         "content": content,
     })
+    if verbose:
+        print(f"← Received chapter response from LLM for: {chapter_title}")
     
     # Parse the result to extract the structured content
     try:
@@ -447,7 +459,7 @@ def generate_chapter(chapter_title: str, content: str, llm: Optional[BaseLanguag
         )
 
 
-def generate_summary(content: str, chapters: List[ChapterContent], llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0) -> str:
+def generate_summary(content: str, chapters: List[ChapterContent], llm: Optional[BaseLanguageModel] = None, temperature: float = 0.0, verbose: bool = False) -> str:
     """
     Generate a comprehensive summary for the entire course.
     
@@ -463,6 +475,8 @@ def generate_summary(content: str, chapters: List[ChapterContent], llm: Optional
     temperature : float, optional
         The temperature setting for the LLM, affecting randomness in output.
         Default is 0.0 (deterministic output).
+    verbose : bool, optional
+        Whether to print progress messages during LLM calls. Default is False.
     
     Returns
     ----
@@ -496,10 +510,14 @@ def generate_summary(content: str, chapters: List[ChapterContent], llm: Optional
     )
     
     # Invoke the chain with the content and chapter summaries
+    if verbose:
+        print("→ Sending course summary request to LLM...")
     result = chain.invoke({
         "content": content,
         "chapters_summary": chapters_summary,
     })
+    if verbose:
+        print("← Received course summary response from LLM")
     
     return result.get("text", "")
 
@@ -576,7 +594,8 @@ def create_course(content: str, llm: Optional[BaseLanguageModel] = None, tempera
         llm=llm, 
         temperature=temperature, 
         max_chapters=max_chapters,
-        fixed_chapter_count=fixed_chapter_count
+        fixed_chapter_count=fixed_chapter_count,
+        verbose=verbose
     )
     
     if verbose:
@@ -592,7 +611,8 @@ def create_course(content: str, llm: Optional[BaseLanguageModel] = None, tempera
             content, 
             llm=llm, 
             temperature=temperature,
-            custom_prompt=custom_prompt
+            custom_prompt=custom_prompt,
+            verbose=verbose
         )
         chapters.append(chapter)
     
@@ -602,7 +622,7 @@ def create_course(content: str, llm: Optional[BaseLanguageModel] = None, tempera
     if chapters:
         if verbose:
             print("Generating course summary...")
-        course.summary = generate_summary(content, chapters, llm=llm, temperature=temperature)
+        course.summary = generate_summary(content, chapters, llm=llm, temperature=temperature, verbose=verbose)
         if verbose:
             print("Course generation complete!")
     
@@ -756,7 +776,8 @@ def create_course_parallel(
         llm=llm, 
         temperature=temperature, 
         max_chapters=max_chapters,
-        fixed_chapter_count=fixed_chapter_count
+        fixed_chapter_count=fixed_chapter_count,
+        verbose=verbose
     )
     
     if verbose:
@@ -794,7 +815,7 @@ def create_course_parallel(
         # Step 3: Generate the course summary
         if verbose:
             print("Generating course summary...")
-        course.summary = generate_summary(content, chapters, llm=llm, temperature=temperature)
+        course.summary = generate_summary(content, chapters, llm=llm, temperature=temperature, verbose=verbose)
         if verbose:
             print("Course generation complete!")
     
@@ -869,7 +890,8 @@ def create_course_cascade(
         llm=llm, 
         temperature=temperature, 
         max_chapters=max_chapters,
-        fixed_chapter_count=fixed_chapter_count
+        fixed_chapter_count=fixed_chapter_count,
+        verbose=verbose
     )
     
     if verbose:
@@ -901,7 +923,8 @@ def create_course_cascade(
                 llm=llm, 
                 temperature=temperature,
                 custom_prompt=custom_prompt,
-                previous_chapters_summary=previous_chapters_summary
+                previous_chapters_summary=previous_chapters_summary,
+                verbose=verbose
             )
             
             # Add the chapter to the list
@@ -944,7 +967,7 @@ def create_course_cascade(
         # Step 3: Generate the course summary
         if verbose:
             print("Generating course summary...")
-        course.summary = generate_summary(content, chapters, llm=llm, temperature=temperature)
+        course.summary = generate_summary(content, chapters, llm=llm, temperature=temperature, verbose=verbose)
         if verbose:
             print("Course generation complete!")
     

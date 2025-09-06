@@ -501,7 +501,8 @@ def test_create_course_orchestrates_all_steps(mock_generate_summary, mock_genera
         llm=mock_llm,
         temperature=0.2,
         max_chapters=5,
-        fixed_chapter_count=True
+        fixed_chapter_count=True,
+        verbose=True
     )
     assert mock_generate_chapter.call_count == 2
     mock_generate_chapter.assert_any_call(
@@ -509,20 +510,23 @@ def test_create_course_orchestrates_all_steps(mock_generate_summary, mock_genera
         "Test content",
         llm=mock_llm,
         temperature=0.2,
-        custom_prompt="Custom prompt"
+        custom_prompt="Custom prompt",
+        verbose=True
     )
     mock_generate_chapter.assert_any_call(
         "Chapter 2",
         "Test content",
         llm=mock_llm,
         temperature=0.2,
-        custom_prompt="Custom prompt"
+        custom_prompt="Custom prompt",
+        verbose=True
     )
     mock_generate_summary.assert_called_once_with(
         "Test content",
         mock_chapters,
         llm=mock_llm,
-        temperature=0.2
+        temperature=0.2,
+        verbose=True
     )
 
 
@@ -553,20 +557,23 @@ def test_create_course_with_explicit_llm(
         llm=mock_llm,
         temperature=0.0,
         max_chapters=10,
-        fixed_chapter_count=False
+        fixed_chapter_count=False,
+        verbose=False
     )
     mock_generate_chapter.assert_called_once_with(
         "Chapter 1", 
         "Test content", 
         llm=mock_llm, 
         temperature=0.0,
-        custom_prompt=None
+        custom_prompt=None,
+        verbose=False
     )
     mock_generate_summary.assert_called_once_with(
         "Test content", 
         [mock_generate_chapter.return_value], 
         llm=mock_llm, 
-        temperature=0.0
+        temperature=0.0,
+        verbose=False
     )
 
 
@@ -598,7 +605,8 @@ def test_create_course_handles_empty_toc(mock_generate_summary, mock_generate_to
         llm=mock_llm, 
         temperature=0.0, 
         max_chapters=10, 
-        fixed_chapter_count=False
+        fixed_chapter_count=False,
+        verbose=False
     )
     mock_generate_summary.assert_not_called()
 
@@ -634,7 +642,8 @@ def test_create_course_with_fixed_chapter_count(
         llm=mock_llm, 
         temperature=0.0, 
         max_chapters=3,
-        fixed_chapter_count=True
+        fixed_chapter_count=True,
+        verbose=False
     )
     # Verify it generated chapters for all the returned chapter titles
     assert mock_generate_chapter.call_count == 3
@@ -750,7 +759,8 @@ def test_create_course_parallel(
         llm=mock_llm,
         temperature=0.2,
         max_chapters=5,
-        fixed_chapter_count=True
+        fixed_chapter_count=True,
+        verbose=True
     )
     mock_parallel_generate_chapters.assert_called_once_with(
         chapter_titles=["Chapter 1", "Chapter 2"],
@@ -768,7 +778,8 @@ def test_create_course_parallel(
         "Test content",
         mock_chapters,
         llm=mock_llm,
-        temperature=0.2
+        temperature=0.2,
+        verbose=True
     )
 
 
@@ -812,7 +823,8 @@ def test_create_course_parallel_with_explicit_llm(
         llm=mock_llm,
         temperature=0.0,
         max_chapters=10,
-        fixed_chapter_count=False
+        fixed_chapter_count=False,
+        verbose=False
     )
     mock_parallel_generate_chapters.assert_called_once_with(
         chapter_titles=["Chapter 1"],
